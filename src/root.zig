@@ -4,6 +4,7 @@ pub const node = @import("node/node.zig");
 pub const open = @import("open/pqueue.zig");
 pub const domain = @import("domain/bit_grid.zig");
 pub const node_mapper = @import("node_mapper/node_mapper.zig");
+pub const grid_pool = @import("node_mapper/grid_mapper.zig");
 pub const heuristic = @import("heuristic/manhattan.zig");
 pub const search = @import("search/unidirectional_search.zig");
 pub const expander = @import("expander/grid_expander.zig");
@@ -11,14 +12,14 @@ pub const scenario = @import("utils/scenario.zig");
 
 const State = struct {
     const Self = @This();
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
 
-    pub fn get_x(self: *const Self) u32 {
+    pub fn get_x(self: *const Self) i32 {
         return self.x;
     }
 
-    pub fn get_y(self: *const Self) u32 {
+    pub fn get_y(self: *const Self) i32 {
         return self.y;
     }
 };
@@ -32,11 +33,11 @@ fn lessThanFn(a: *Node, b: *Node) bool {
 }
 
 const Domain = domain.BitGrid();
-const NodeMap = node_mapper.StateNodeMap(State, Node);
+const NodeMap = grid_pool.StateNodeMap(State, Node);
 const Open = open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = heuristic.Manhattan(State);
 const Expander = expander.GridExpander4Connected(State, Domain, NodeMap);
-const Search = search.UnidirectionalSearch(State, Node, NodeMap, Domain, Expander, Open, Heuristic);
+const Search = search.UnidirectionalSearch(State, Node, NodeMap, Expander, Open, Heuristic);
 
 test "run astar" {
     const allocator = std.testing.allocator;
@@ -50,26 +51,19 @@ test "run astar" {
     }
 
     defer _domain.deinit();
-    var _map = try NodeMap.init(allocator);
+    var _map = try NodeMap.init(_domain.width, _domain.height, allocator);
     defer _map.deinit();
     var _open = try Open.init(allocator, 1);
     defer _open.deinit();
     var _heuristic = Heuristic{};
     var _expander = Expander.init(&_domain, &_map);
-    var _search = Search.init(&_domain, &_map, &_expander, &_open, &_heuristic, allocator);
+    var _search = Search.init(&_map, &_expander, &_open, &_heuristic);
 
     std.debug.print("Searching\n", .{});
-
-    const start_time = std.time.milliTimestamp();
-    const result = try _search.query(State{ .x = 0, .y = 0 }, State{ .x = size - 1, .y = size - 1 });
-    const duration = std.time.milliTimestamp() - start_time;
-    std.debug.print("Duration   (ms): {}\n", .{duration});
-
-    std.debug.print("Solution\n", .{});
-    if (result) |solution| {
-        defer allocator.free(solution);
-        // for (solution) |state| {
-        //     std.debug.print("{}\n", .{state});
-        // }
-    }
+    _ = try _search.query(
+        State{ .x = 0, .y = 0 },
+        State{ .x = size - 1, .y = size - 1 },
+    );
+    const metrics = &_search.metrics;
+    std.debug.print("{}\n", .{metrics});
 }

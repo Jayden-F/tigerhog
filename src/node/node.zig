@@ -3,37 +3,30 @@ const std = @import("std");
 pub fn Node(comptime State: type) type {
     return struct {
         const Self = @This();
-        pub const Status = enum(u1) { Open, Closed };
 
         state: State,
-        g: f64 = 0.0,
-        f: f64 = 0.0,
+        g: f64 = std.math.inf(f64),
+        f: f64 = std.math.inf(f64),
         parent: ?*Self = null,
-        status: Status = Status.Open,
-        priority: ?u64 = null,
-        search_number: u64 = 0,
+        priority: usize = std.math.maxInt(usize),
 
-        pub fn init(state: State, g: f64, f: f64, parent: ?*Self, status: Status, priority: u64, search_number: u64) Self {
+        pub fn init(state: State, g: f64, f: f64, parent: ?*Self, priority: u64) Self {
             return .{
                 .state = state,
                 .g = g,
                 .f = f,
                 .parent = parent,
-                .status = status,
                 .priority = priority,
-                .search_number = search_number,
             };
         }
 
         pub fn default(state: State) Self {
             return .{
                 .state = state,
-                .g = 0.0,
-                .f = 0.0,
+                .g = std.math.inf(f64),
+                .f = std.math.inf(f64),
                 .parent = null,
-                .status = Status.Open,
-                .priority = null,
-                .search_number = 0,
+                .priority = std.math.maxInt(usize),
             };
         }
 
@@ -73,28 +66,12 @@ pub fn Node(comptime State: type) type {
             return self.parent;
         }
 
-        pub inline fn set_status(self: *Self, status: Status) void {
-            self.status = status;
-        }
-
-        pub inline fn get_status(self: *const Self) Status {
-            return self.status;
-        }
-
-        pub inline fn set_priority(self: *Self, priority: ?u64) void {
+        pub inline fn set_priority(self: *Self, priority: usize) void {
             self.priority = priority;
         }
 
-        pub inline fn get_priority(self: *const Self) ?u64 {
+        pub inline fn get_priority(self: *const Self) usize {
             return self.priority;
-        }
-
-        pub inline fn set_search_number(self: *Self, search_number: u64) void {
-            self.search_number = search_number;
-        }
-
-        pub inline fn get_search_number(self: *const Self) ?u64 {
-            return self.search_number;
         }
     };
 }
@@ -106,11 +83,17 @@ test "show size" {
     const size = @sizeOf(Node_u64);
     std.debug.print("\nsize: {}\n", .{size});
 
-    try std.testing.expectEqual(64, size);
+    try std.testing.expectEqual(40, size);
 
     const node: *Node_u64 = try allocator.create(Node_u64);
     defer allocator.destroy(node);
-    node.* = Node_u64.init(0, 0.0, 0.0, null, Node_u64.Status.Closed, 0, 0);
+    node.* = Node_u64.init(
+        0,
+        0.0,
+        0.0,
+        null,
+        0,
+    );
 
     std.debug.print("node: {}\n", .{node.*});
 

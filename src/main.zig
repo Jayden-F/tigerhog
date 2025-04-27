@@ -18,20 +18,21 @@ const State = packed struct {
 
 const Node = tigerhog.node.Node(State);
 
-fn lessThanFn(a: *Node, b: *Node) bool {
+fn lessThanFn(a: *const Node, b: *const Node) bool {
     if (a.get_f() < b.get_f()) return true;
     if (a.get_f() > b.get_f()) return false;
     return a.get_g() > b.get_g();
 }
+
 const Domain = tigerhog.domain.BitGrid();
-const NodeMap = tigerhog.node_mapper.StateNodeMap(State, Node);
+const NodeMap = tigerhog.grid_pool.StateNodeMap(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = tigerhog.heuristic.Manhattan(State);
 const Expander = tigerhog.expander.GridExpander4Connected(State, Domain, NodeMap);
 const Search = tigerhog.search.UnidirectionalSearch(State, Node, NodeMap, Expander, Open, Heuristic);
 
 pub fn main() !void {
-    var dba = std.heap.DebugAllocator(.{ .safety = true }){};
+    var dba = std.heap.DebugAllocator(.{ .safety = false }){};
     const allocator = dba.allocator();
 
     try run_astar(allocator);
@@ -42,12 +43,6 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
 
-    var node_map = try NodeMap.init(allocator);
-    defer node_map.deinit();
-
-    var open = try Open.init(allocator, 2);
-    defer open.deinit();
-
     var heuristic = Heuristic{};
 
     while (try it.next()) |entry| {
@@ -55,8 +50,8 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
             defer scen_file.close();
 
-            const scenario = try tigerhog.scenario.load_gppc_scenarios(scen_file.reader(), allocator);
-            defer allocator.free(scenario.instances);
+            var scenario = try tigerhog.scenario.load_gppc_scenarios(scen_file.reader(), allocator);
+            defer scenario.deinit();
 
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
             defer map_file.close();
@@ -64,14 +59,20 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             var domain = try Domain.load_map(allocator, map_file.reader());
             defer domain.deinit();
 
+            var node_map = try NodeMap.init(domain.width, domain.height, allocator);
+            defer node_map.deinit();
+
+            var open = try Open.init(allocator, domain.width * domain.height);
+            defer open.deinit();
+
             var expander = Expander.init(&domain, &node_map);
             var search = Search.init(&node_map, &expander, &open, &heuristic);
 
             for (scenario.instances) |instance| {
                 // std.debug.print("{}\n", .{instance});
                 _ = try search.query(State{ .x = instance.start_x, .y = instance.start_y }, State{ .x = instance.goal_x, .y = instance.goal_y });
-                // const metrics = &search.metrics;
-                // std.debug.print("{}\n", .{metrics.*});
+                const metrics = &search.metrics;
+                std.debug.print("{}\n", .{metrics.*});
             }
         }
     }

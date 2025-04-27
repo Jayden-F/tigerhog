@@ -4,18 +4,15 @@ const PriorityQueueError = error{
     QueueEmpty,
 };
 
-// Status describing whether the node is in the open or closed list
-const Status = enum(u1) { Open, Closed };
-
 fn Node(comptime T: type) type {
     return struct {
         const Self = @This();
 
         value: T,
-        priority: ?usize = null,
+        priority: usize = std.math.maxInt(usize),
 
         // Getter method for the priority field
-        pub fn get_priority(self: *const Self) ?usize {
+        pub fn get_priority(self: *const Self) usize {
             return self.priority;
         }
 
@@ -79,6 +76,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         pub fn push(self: *Self, value: T) !void {
             @setRuntimeSafety(false);
             if (self.contains(value)) {
+                self.decrease_key(value);
                 return;
             }
             const new_len = self.len + 1;
@@ -101,6 +99,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
                     self.len -= 1;
                     self.swap(0, self.len);
                     self.sift_down(0);
+                    self.elements[self.len].set_priority(std.math.maxInt(usize));
                     return self.elements[self.len];
                 },
             }
@@ -115,15 +114,13 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn decrease_key(self: *Self, value: T) void {
-            if (self.contains(value)) {
-                self.sift_up(value.get_priority().?);
-            }
+            std.debug.assert(self.contains(value));
+            self.sift_up(value.get_priority());
         }
 
         pub fn increase_key(self: *Self, value: T) void {
-            if (self.contains(value)) {
-                self.sift_down(value.get_priority().?);
-            }
+            std.debug.assert(self.contains(value));
+            self.sift_down(value.get_priority());
         }
 
         pub fn grow(self: *Self, new_capacity: usize) !void {
@@ -147,10 +144,9 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
 
         pub inline fn contains(self: *const Self, value: T) bool {
             @setRuntimeSafety(false);
-            if (value.get_priority()) |priority| {
-                if (priority < self.len) {
-                    return std.meta.eql(value, self.elements[priority]);
-                }
+            const priority = value.get_priority();
+            if (priority < self.len) {
+                return std.meta.eql(value, self.elements[priority]);
             }
             return false;
         }

@@ -73,6 +73,18 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
             self.heap_ops = 0;
         }
 
+        pub fn push_assume_cap(self: *Self, value: T) void {
+            @setRuntimeSafety(false);
+            if (self.contains(value)) {
+                self.decrease_key(value);
+                return;
+            }
+            value.set_priority(self.len);
+            self.elements[self.len] = value;
+            self.sift_up(self.len);
+            self.len += 1;
+        }
+
         pub fn push(self: *Self, value: T) !void {
             @setRuntimeSafety(false);
             if (self.contains(value)) {

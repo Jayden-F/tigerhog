@@ -89,7 +89,7 @@ pub fn UnidirectionalSearch(
                         successor.set_g(g);
                         successor.set_f(f);
                         successor.set_parent(current);
-                        try self.open.push(successor);
+                        self.open.push(successor);
                     }
                     // std.debug.print("Successor: {}\n", .{successor.*});
                 }

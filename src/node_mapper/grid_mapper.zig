@@ -46,7 +46,7 @@ pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
             return self.width * _y + _x;
         }
 
-        pub inline fn generate(self: *Self, state: State) *Node {
+        pub inline fn generate(self: *Self, state: State) !*Node {
             @setRuntimeSafety(false);
             const index = self.get_index(state.get_x(), state.get_y());
 

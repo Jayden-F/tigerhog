@@ -1,13 +1,12 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
-const enum_set = @import("../utils/enum_set.zig");
 
-pub fn GridExpander4Connected(comptime State: type, comptime Domain: type, comptime NodeMapper: type) type {
+pub fn GridExpander4Connected(comptime State: type, comptime Domain: type) type {
     const Direction = direction.Direction;
-    const Neighbours = enum_set.EnumSet(Direction);
+    const Neighbours = std.EnumSet(Direction);
 
     const Edge = struct {
-        state: State,
+        node: State,
         cost: f64,
     };
 
@@ -15,19 +14,17 @@ pub fn GridExpander4Connected(comptime State: type, comptime Domain: type, compt
         const Self = @This();
 
         domain: *Domain,
-        node_mapper: *NodeMapper,
         edges: [4]Edge = undefined,
         num_neighbours: usize = 0,
 
-        pub fn init(domain: *Domain, map: *NodeMapper) Self {
+        pub fn init(domain: *Domain) Self {
             return .{
                 .domain = domain,
-                .node_mapper = map,
             };
         }
 
-        pub fn get_neighbours(self: *const Self, x: i32, y: i32) Neighbours {
-            var result = Neighbours.init();
+        pub inline fn get_neighbours(self: *const Self, x: i32, y: i32) Neighbours {
+            var result = Neighbours.initEmpty();
 
             const north = self.domain.is_valid(x, y - 1);
             if (north) result.insert(Direction.NORTH);
@@ -59,7 +56,7 @@ pub fn GridExpander4Connected(comptime State: type, comptime Domain: type, compt
             return result;
         }
 
-        pub fn expand(self: *Self, current: State) []Edge {
+        pub fn expand(self: *Self, current: State) []const Edge {
             self.reset();
 
             const x: i32 = current.get_x();
@@ -88,6 +85,7 @@ pub fn GridExpander4Connected(comptime State: type, comptime Domain: type, compt
         }
 
         inline fn add_neighbour(self: *Self, state: State, cost: f64) void {
+            @setRuntimeSafety(false);
             self.edges[self.num_neighbours] = .{ .state = state, .cost = cost };
             self.num_neighbours += 1;
         }

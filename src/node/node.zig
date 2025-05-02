@@ -20,14 +20,8 @@ pub fn Node(comptime State: type) type {
             };
         }
 
-        pub fn default(state: State) Self {
-            return .{
-                .state = state,
-                .g = std.math.inf(f64),
-                .f = std.math.inf(f64),
-                .parent = null,
-                .priority = std.math.maxInt(usize),
-            };
+        pub fn default() Self {
+            return .{};
         }
 
         pub inline fn set_state(self: *Self, state: State) void {

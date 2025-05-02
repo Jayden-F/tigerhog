@@ -46,7 +46,7 @@ pub fn BitGrid() type {
             self.data.deinit();
         }
 
-        pub fn is_valid(self: *const Self, x: i32, y: i32) bool {
+        pub inline fn is_valid(self: *const Self, x: i32, y: i32) bool {
             @setRuntimeSafety(false);
             const i = self.index(x, y);
             return self.data.isSet(i);

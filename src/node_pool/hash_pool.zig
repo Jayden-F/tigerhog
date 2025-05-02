@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
+pub fn HashPool(comptime State: type, comptime Node: type) type {
     return struct {
         const Self: type = @This();
         const MemoryPool: type = std.heap.MemoryPool(Node);
@@ -30,7 +30,7 @@ pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
 
             if (!result.found_existing) {
                 const node: *Node = try self.pool.create();
-                node.* = Node.default(state);
+                node.* = .{ .state = state };
                 result.value_ptr.* = node;
             }
 

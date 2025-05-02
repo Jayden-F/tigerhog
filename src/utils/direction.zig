@@ -1,10 +1,10 @@
 pub const Direction = enum(u8) {
     NORTH,
-    NORTH_EAST,
     EAST,
-    SOUTH_EAST,
     SOUTH,
-    SOUTH_WEST,
     WEST,
+    NORTH_EAST,
+    SOUTH_EAST,
+    SOUTH_WEST,
     NORTH_WEST,
 };

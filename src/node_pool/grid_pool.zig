@@ -1,28 +1,28 @@
 const std = @import("std");
 
-pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
+pub fn GridPool(comptime State: type, comptime Node: type) type {
     return struct {
         const SearchNode = struct {
-            search_number: usize = 0,
+            search_number: usize,
             node: ?*Node,
         };
 
         const Self: type = @This();
-        const MemoryPool: type = std.heap.MemoryPool(Node);
-        const Map: type = []SearchNode;
+        const NodePool: type = std.heap.MemoryPool(Node);
+        const NodeMap: type = []SearchNode;
 
         width: usize,
         height: usize,
         allocator: std.mem.Allocator,
-        pool: MemoryPool,
-        map: Map,
+        pool: NodePool,
+        map: NodeMap,
         search_number: usize = 0,
 
         pub fn init(width: usize, height: usize, allocator: std.mem.Allocator) !Self {
             var map = try allocator.alloc(SearchNode, width * height);
             @memset(map[0..], SearchNode{ .search_number = 0, .node = null });
 
-            const pool = try MemoryPool.initPreheated(allocator, width * height);
+            const pool = try NodePool.initPreheated(allocator, width * height);
 
             return .{
                 .width = width,
@@ -30,7 +30,6 @@ pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
                 .allocator = allocator,
                 .pool = pool,
                 .map = map,
-                .search_number = 0,
             };
         }
 
@@ -49,14 +48,12 @@ pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
         pub inline fn generate(self: *Self, state: State) !*Node {
             @setRuntimeSafety(false);
             const index = self.get_index(state.get_x(), state.get_y());
-
             const search_node = &self.map[index];
 
             if (search_node.search_number != self.search_number) {
                 const node: *Node = try self.pool.create();
-                node.* = Node.default(state);
-                search_node.node = node;
-                search_node.search_number = self.search_number;
+                node.* = .{ .state = state };
+                search_node.* = .{ .node = node, .search_number = self.search_number };
             }
 
             std.debug.assert(std.meta.eql(search_node.node.?.get_state(), state));
@@ -65,7 +62,7 @@ pub fn StateNodeMap(comptime State: type, comptime Node: type) type {
 
         pub fn reset(self: *Self) void {
             self.search_number += 1;
-            _ = self.pool.reset(MemoryPool.ResetMode.retain_capacity);
+            _ = self.pool.reset(NodePool.ResetMode.retain_capacity);
         }
     };
 }

@@ -25,11 +25,20 @@ fn lessThanFn(a: *const Node, b: *const Node) bool {
 }
 
 const Domain = tigerhog.domain.BitGrid();
-const NodeMap = tigerhog.grid_pool.StateNodeMap(State, Node);
+const NodePool = tigerhog.node_pool.GridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
-const Heuristic = tigerhog.heuristic.Manhattan(State);
-const Expander = tigerhog.expander.GridExpander4Connected(State, Domain, NodeMap);
-const Search = tigerhog.search.UnidirectionalSearch(State, Node, NodeMap, Expander, Open, Heuristic);
+const Heuristic = tigerhog.heuristic.Octile(State);
+const Expander = tigerhog.expander.GridExpander8Connected(State, Domain);
+const Search = tigerhog.search.UnidirectionalSearch(
+    State,
+    Node,
+    NodePool,
+    Expander,
+    Open,
+    Heuristic,
+    Logger,
+);
+const Logger = tigerhog.logger.NoopLogger(Node);
 
 pub fn main() !void {
     var dba = std.heap.DebugAllocator(.{ .safety = false }){};
@@ -43,36 +52,49 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
 
-    var heuristic = Heuristic{};
-
     while (try it.next()) |entry| {
         if (std.mem.eql(u8, entry.name[(entry.name.len - 5)..], ".scen")) {
+
+            // reading problem
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
             defer scen_file.close();
-
             var scenario = try tigerhog.scenario.load_gppc_scenarios(scen_file.reader(), allocator);
             defer scenario.deinit();
-
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
             defer map_file.close();
 
+            // setting up algorithm
             var domain = try Domain.load_map(allocator, map_file.reader());
             defer domain.deinit();
-
-            var node_map = try NodeMap.init(domain.width, domain.height, allocator);
-            defer node_map.deinit();
-
+            var node_pool = try NodePool.init(domain.width, domain.height, allocator);
+            defer node_pool.deinit();
+            var expander = Expander.init(&domain);
+            defer expander.deinit();
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
+            var heuristic = Heuristic.init();
+            defer heuristic.deinit();
+            var logger = Logger.init();
+            defer logger.deinit();
 
-            var expander = Expander.init(&domain, &node_map);
-            var search = Search.init(&node_map, &expander, &open, &heuristic);
+            // searching
+            var search = Search.init(
+                &node_pool,
+                &expander,
+                &open,
+                &heuristic,
+                &logger,
+            );
+            defer search.deinit();
 
             for (scenario.instances) |instance| {
-                // std.debug.print("{}\n", .{instance});
-                _ = try search.query(State{ .x = instance.start_x, .y = instance.start_y }, State{ .x = instance.goal_x, .y = instance.goal_y });
+                _ = try search.query(
+                    State{ .x = instance.start_x, .y = instance.start_y },
+                    State{ .x = instance.goal_x, .y = instance.goal_y },
+                );
+
                 const metrics = &search.metrics;
-                std.debug.print("{}\n", .{metrics.*});
+                try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
             }
         }
     }

@@ -28,11 +28,10 @@ const Domain = tigerhog.domain.BitGrid();
 const NodePool = tigerhog.node_pool.GridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = tigerhog.heuristic.Octile(State);
-const Expander = tigerhog.expander.GridExpander8Connected(State, Domain);
+const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
 const Search = tigerhog.search.UnidirectionalSearch(
     State,
     Node,
-    NodePool,
     Expander,
     Open,
     Heuristic,
@@ -41,8 +40,11 @@ const Search = tigerhog.search.UnidirectionalSearch(
 const Logger = tigerhog.logger.NoopLogger(Node);
 
 pub fn main() !void {
-    var dba = std.heap.DebugAllocator(.{ .safety = false }){};
-    const allocator = dba.allocator();
+
+    // var dba = std.heap.DebugAllocator(.{ .safety = false }){};
+    // var allocator = dba.allocator();
+
+    const allocator = std.heap.smp_allocator;
 
     try run_astar(allocator);
 }
@@ -58,17 +60,20 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             // reading problem
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
             defer scen_file.close();
-            var scenario = try tigerhog.scenario.load_gppc_scenarios(scen_file.reader(), allocator);
+            var buffered_scen_file = std.io.bufferedReader(scen_file.reader());
+            var scenario = try tigerhog.scenario.load_gppc_scenarios(buffered_scen_file.reader(), allocator);
             defer scenario.deinit();
+
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
+            var buffered_map_file = std.io.bufferedReader(map_file.reader());
             defer map_file.close();
 
             // setting up algorithm
-            var domain = try Domain.load_map(allocator, map_file.reader());
+            var domain = try Domain.load_map(allocator, buffered_map_file.reader());
             defer domain.deinit();
             var node_pool = try NodePool.init(domain.width, domain.height, allocator);
             defer node_pool.deinit();
-            var expander = Expander.init(&domain);
+            var expander = Expander.init(&domain, &node_pool);
             defer expander.deinit();
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
@@ -79,7 +84,6 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
             // searching
             var search = Search.init(
-                &node_pool,
                 &expander,
                 &open,
                 &heuristic,
@@ -89,12 +93,18 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
             for (scenario.instances) |instance| {
                 _ = try search.query(
-                    State{ .x = instance.start_x, .y = instance.start_y },
-                    State{ .x = instance.goal_x, .y = instance.goal_y },
+                    State{
+                        .x = instance.start_x,
+                        .y = instance.start_y,
+                    },
+                    State{
+                        .x = instance.goal_x,
+                        .y = instance.goal_y,
+                    },
                 );
 
-                const metrics = &search.metrics;
-                try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
+                // const metrics = &search.metrics;
+                // try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
             }
         }
     }

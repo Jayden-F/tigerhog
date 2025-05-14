@@ -5,7 +5,6 @@ const metrics = @import("../utils/metrics.zig");
 pub fn UnidirectionalSearch(
     comptime State: type,
     comptime Node: type,
-    comptime NodePool: type,
     comptime Expander: type,
     comptime Open: type,
     comptime Heuristic: type,
@@ -15,21 +14,18 @@ pub fn UnidirectionalSearch(
         const Self = @This();
 
         expander: *Expander,
-        node_pool: *NodePool,
         open: *Open,
         heuristic: *Heuristic,
         logger: *Logger,
         metrics: metrics.Metrics,
 
         pub fn init(
-            node_pool: *NodePool,
             expander: *Expander,
             open: *Open,
             heuristic: *Heuristic,
             logger: *Logger,
         ) Self {
             return .{
-                .node_pool = node_pool,
                 .expander = expander,
                 .open = open,
                 .heuristic = heuristic,
@@ -42,7 +38,7 @@ pub fn UnidirectionalSearch(
 
         pub fn query(self: *Self, start_state: State, target_state: State) !?*const Node {
             self.open.reset();
-            self.node_pool.reset();
+            self.expander.reset();
             self.metrics.reset();
 
             const timestamp_nanos = std.time.nanoTimestamp();
@@ -70,8 +66,9 @@ pub fn UnidirectionalSearch(
         }
 
         fn search(self: *Self, start_state: State, target_state: State) !?*const Node {
-            const target: *Node = try self.node_pool.generate(target_state);
-            const start: *Node = try self.node_pool.generate(start_state);
+            const target: *Node = try self.expander.generate(target_state);
+            const start: *Node = try self.expander.generate(start_state);
+
             start.set_g(0.0);
             start.set_f(self.heuristic.compute(start_state, target_state));
 
@@ -87,11 +84,10 @@ pub fn UnidirectionalSearch(
                     return current;
                 }
 
-                for (self.expander.expand(current.get_state())) |*edge| {
+                for (try self.expander.expand(current)) |*edge| {
+                    const successor: *Node = edge.node;
                     const g: f64 = current.get_g() + edge.cost;
-                    const f: f64 = g + self.heuristic.compute(edge.state, target_state);
-
-                    var successor: *Node = try self.node_pool.generate(edge.state);
+                    const f: f64 = g + self.heuristic.compute(successor.get_state(), target_state);
 
                     if (g < successor.get_g()) {
                         successor.set_g(g);

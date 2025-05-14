@@ -17,6 +17,7 @@ pub fn BitGrid() type {
             const bytes = 8 + bits / 8 + 8;
             const size = bytes * 8;
             const data = try std.bit_set.DynamicBitSet.initEmpty(allocator, size);
+
             return .{ .width = width, .height = height, .padded_width_bytes = padded_width_bytes, .padded_width_bits = padded_width_bits, .data = data };
         }
 

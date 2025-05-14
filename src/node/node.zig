@@ -3,6 +3,7 @@ const std = @import("std");
 pub fn Node(comptime State: type) type {
     return struct {
         const Self = @This();
+        pub const State_T = State;
 
         state: State,
         g: f64 = std.math.inf(f64),

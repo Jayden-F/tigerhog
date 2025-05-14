@@ -1,97 +1,89 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
 
-pub fn GridExpander4Connected(comptime State: type, comptime Domain: type) type {
+pub fn GridExpander4Connected(
+    comptime Domain: type,
+    comptime Node: type,
+    comptime NodePool: type,
+) type {
     const Direction = direction.Direction;
     const Neighbours = std.EnumSet(Direction);
 
     const Edge = struct {
-        node: State,
+        node: *Node,
         cost: f64,
     };
 
     return struct {
         const Self = @This();
+        const offsets = [_]struct { dx: i32, dy: i32, dir: direction.Direction, cost: f64 }{
+            .{ .dx = 0, .dy = -1, .dir = .NORTH, .cost = 1.0 },
+            .{ .dx = 1, .dy = 0, .dir = .EAST, .cost = 1.0 },
+            .{ .dx = 0, .dy = 1, .dir = .SOUTH, .cost = 1.0 },
+            .{ .dx = -1, .dy = 0, .dir = .WEST, .cost = 1.0 },
+        };
 
         domain: *Domain,
+        node_pool: *NodePool,
         edges: [4]Edge = undefined,
         num_neighbours: usize = 0,
 
-        pub fn init(domain: *Domain) Self {
+        pub fn init(domain: *Domain, node_pool: *NodePool) Self {
             return .{
                 .domain = domain,
+                .node_pool = node_pool,
             };
         }
+
+        pub fn deinit(_: *Self) void {}
 
         pub inline fn get_neighbours(self: *const Self, x: i32, y: i32) Neighbours {
             var result = Neighbours.initEmpty();
 
-            const north = self.domain.is_valid(x, y - 1);
-            if (north) result.insert(Direction.NORTH);
-            const south = self.domain.is_valid(x, y + 1);
-            if (south) result.insert(Direction.SOUTH);
+            if (self.domain.is_valid(x, y - 1)) result.insert(.NORTH);
 
-            if (self.domain.is_valid(x + 1, y)) {
-                result.insert(Direction.EAST);
+            if (self.domain.is_valid(x, y + 1)) result.insert(.SOUTH);
 
-                if (north and self.domain.is_valid(x + 1, y - 1)) {
-                    result.insert(Direction.NORTH_EAST);
-                }
-                if (south and self.domain.is_valid(x + 1, y + 1)) {
-                    result.insert(Direction.SOUTH_EAST);
-                }
-            }
+            if (self.domain.is_valid(x + 1, y)) result.insert(.EAST);
 
-            if (self.domain.is_valid(x - 1, y)) {
-                result.insert(Direction.WEST);
+            if (self.domain.is_valid(x - 1, y)) result.insert(.WEST);
 
-                if (north and self.domain.is_valid(x - 1, y - 1)) {
-                    result.insert(Direction.NORTH_WEST);
-                }
-
-                if (south and self.domain.is_valid(x - 1, y + 1)) {
-                    result.insert(Direction.SOUTH_WEST);
-                }
-            }
             return result;
         }
 
-        pub fn expand(self: *Self, current: State) []const Edge {
-            self.reset();
+        pub fn expand(self: *Self, current: *const Node) ![]const Edge {
+            @setRuntimeSafety(false);
+            self.num_neighbours = 0;
 
-            const x: i32 = current.get_x();
-            const y: i32 = current.get_y();
+            const current_state = current.get_state();
+            const x: i32 = current_state.get_x();
+            const y: i32 = current_state.get_y();
 
             std.debug.assert(self.domain.is_valid(x, y));
 
             const neighbours = self.get_neighbours(x, y);
 
-            if (neighbours.contains(Direction.NORTH)) {
-                self.add_neighbour(.{ .x = x, .y = y - 1 }, 1.0);
-            }
-            if (neighbours.contains(Direction.SOUTH)) {
-                self.add_neighbour(.{ .x = x, .y = y + 1 }, 1.0);
-            }
-
-            if (neighbours.contains(Direction.EAST)) {
-                self.add_neighbour(.{ .x = x + 1, .y = y }, 1.0);
-            }
-
-            if (neighbours.contains(Direction.WEST)) {
-                self.add_neighbour(.{ .x = x - 1, .y = y }, 1.0);
+            inline for (offsets) |offset| {
+                if (neighbours.contains(offset.dir))
+                    try self.add_neighbour(.{ .x = x + offset.dx, .y = y + offset.dy }, offset.cost);
             }
 
             return self.edges[0..self.num_neighbours];
         }
 
-        inline fn add_neighbour(self: *Self, state: State, cost: f64) void {
+        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
             @setRuntimeSafety(false);
-            self.edges[self.num_neighbours] = .{ .state = state, .cost = cost };
+            const node: *Node = try self.generate(state);
+            self.edges[self.num_neighbours] = .{ .node = node, .cost = cost };
             self.num_neighbours += 1;
         }
 
-        inline fn reset(self: *Self) void {
-            self.num_neighbours = 0;
+        pub inline fn generate(self: *Self, state: Node.State_T) !*Node {
+            return try self.node_pool.generate(state);
+        }
+
+        pub inline fn reset(self: *Self) void {
+            self.node_pool.reset();
         }
     };
 }

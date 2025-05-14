@@ -1,24 +1,40 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
 
-pub fn GridExpander8Connected(comptime State: type, comptime Domain: type) type {
+pub fn GridExpander8Connected(
+    comptime Domain: type,
+    comptime Node: type,
+    comptime NodePool: type,
+) type {
     const Neighbours = std.EnumSet(direction.Direction);
 
     const Edge = struct {
-        state: State,
+        node: *Node,
         cost: f64,
     };
 
     return struct {
         const Self = @This();
+        const offsets = [_]struct { dx: i32, dy: i32, dir: direction.Direction, cost: f64 }{
+            .{ .dx = 0, .dy = -1, .dir = .NORTH, .cost = 1.0 },
+            .{ .dx = 1, .dy = 0, .dir = .EAST, .cost = 1.0 },
+            .{ .dx = 0, .dy = 1, .dir = .SOUTH, .cost = 1.0 },
+            .{ .dx = -1, .dy = 0, .dir = .WEST, .cost = 1.0 },
+            .{ .dx = 1, .dy = -1, .dir = .NORTH_EAST, .cost = std.math.sqrt2 },
+            .{ .dx = 1, .dy = 1, .dir = .SOUTH_EAST, .cost = std.math.sqrt2 },
+            .{ .dx = -1, .dy = 1, .dir = .SOUTH_WEST, .cost = std.math.sqrt2 },
+            .{ .dx = -1, .dy = -1, .dir = .NORTH_WEST, .cost = std.math.sqrt2 },
+        };
 
         domain: *Domain,
+        node_pool: *NodePool,
         edges: [8]Edge = undefined,
         num_neighbours: usize = 0,
 
-        pub fn init(domain: *Domain) Self {
+        pub fn init(domain: *Domain, node_pool: *NodePool) Self {
             return .{
                 .domain = domain,
+                .node_pool = node_pool,
             };
         }
         pub fn deinit(_: *Self) void {}
@@ -56,50 +72,37 @@ pub fn GridExpander8Connected(comptime State: type, comptime Domain: type) type 
             return result;
         }
 
-        pub fn expand(self: *Self, current: State) []const Edge {
-            self.reset();
+        pub fn expand(self: *Self, current: *const Node) ![]const Edge {
+            self.num_neighbours = 0;
 
-            const x: i32 = current.get_x();
-            const y: i32 = current.get_y();
+            const current_state = current.get_state();
+            const x: i32 = current_state.get_x();
+            const y: i32 = current_state.get_y();
 
             std.debug.assert(self.domain.is_valid(x, y));
 
             const neighbours = self.get_neighbours(x, y);
 
-            if (neighbours.contains(.NORTH)) {
-                self.add_neighbour(.{ .x = x, .y = y - 1 }, 1.0);
+            inline for (offsets) |offset| {
+                if (neighbours.contains(offset.dir))
+                    try self.add_neighbour(.{ .x = x + offset.dx, .y = y + offset.dy }, offset.cost);
             }
-            if (neighbours.contains(.EAST)) {
-                self.add_neighbour(.{ .x = x + 1, .y = y }, 1.0);
-            }
-            if (neighbours.contains(.SOUTH)) {
-                self.add_neighbour(.{ .x = x, .y = y + 1 }, 1.0);
-            }
-            if (neighbours.contains(.WEST)) {
-                self.add_neighbour(.{ .x = x - 1, .y = y }, 1.0);
-            }
-            if (neighbours.contains(.NORTH_EAST)) {
-                self.add_neighbour(.{ .x = x + 1, .y = y - 1 }, std.math.sqrt2);
-            }
-            if (neighbours.contains(.SOUTH_EAST)) {
-                self.add_neighbour(.{ .x = x + 1, .y = y + 1 }, std.math.sqrt2);
-            }
-            if (neighbours.contains(.SOUTH_WEST)) {
-                self.add_neighbour(.{ .x = x - 1, .y = y + 1 }, std.math.sqrt2);
-            }
-            if (neighbours.contains(.NORTH_WEST)) {
-                self.add_neighbour(.{ .x = x - 1, .y = y - 1 }, std.math.sqrt2);
-            }
+
             return self.edges[0..self.num_neighbours];
         }
 
-        inline fn add_neighbour(self: *Self, state: State, cost: f64) void {
-            self.edges[self.num_neighbours] = .{ .state = state, .cost = cost };
+        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
+            const node: *Node = try self.generate(state);
+            self.edges[self.num_neighbours] = .{ .node = node, .cost = cost };
             self.num_neighbours += 1;
         }
 
-        inline fn reset(self: *Self) void {
-            self.num_neighbours = 0;
+        pub inline fn generate(self: *Self, state: Node.State_T) !*Node {
+            return try self.node_pool.generate(state);
+        }
+
+        pub inline fn reset(self: *Self) void {
+            self.node_pool.reset();
         }
     };
 }

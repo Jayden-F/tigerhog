@@ -37,10 +37,6 @@ pub fn UnidirectionalSearch(
         pub fn deinit(_: *Self) void {}
 
         pub fn query(self: *Self, start_state: State, target_state: State) !?*const Node {
-            self.open.reset();
-            self.expander.reset();
-            self.metrics.reset();
-
             const timestamp_nanos = std.time.nanoTimestamp();
             const target: ?*const Node = try self.search(start_state, target_state);
             self.metrics.elapsed_time_nanos = std.time.nanoTimestamp() - timestamp_nanos;
@@ -50,6 +46,12 @@ pub fn UnidirectionalSearch(
             self.metrics.heap_ops = self.open.heap_ops;
 
             return target;
+        }
+
+        pub fn reset(self: *Self) void {
+            self.open.reset();
+            self.expander.reset();
+            self.metrics.reset();
         }
 
         fn solution(_: *Self, target: *Node, allocator: std.mem.Allocator) ![]State {
@@ -73,12 +75,12 @@ pub fn UnidirectionalSearch(
             start.set_f(self.heuristic.compute(start_state, target_state));
 
             try self.open.push(start);
-            self.logger.initialise(start, target);
+            try self.logger.initialise(start, target);
 
             while (!self.open.empty()) {
                 const current: *Node = try self.open.pop();
                 self.metrics.nodes_expanded += 1;
-                self.logger.expand(current);
+                try self.logger.expand(current);
 
                 if (current == target) {
                     return current;
@@ -97,10 +99,10 @@ pub fn UnidirectionalSearch(
                     }
 
                     self.metrics.nodes_generated += 1;
-                    self.logger.generate(successor);
+                    try self.logger.generate(successor);
                 }
 
-                self.logger.close(current);
+                try self.logger.close(current);
             }
             return null;
         }

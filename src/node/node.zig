@@ -68,6 +68,24 @@ pub fn Node(comptime State: type) type {
         pub inline fn get_priority(self: *const Self) usize {
             return self.priority;
         }
+
+        pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
+            const node_string = try self.get_state().to_string(allocator);
+            defer allocator.free(node_string);
+
+            return try std.fmt.allocPrint(
+                allocator,
+                "id: {d}, pId: {?d}, g: {e} h: {e}, f: {e}, {s}",
+                .{
+                    @as(u64, @bitCast(self.get_state())),
+                    if (self.parent) |parent| @as(u64, @bitCast(parent.get_state())) else null,
+                    self.get_g(),
+                    self.get_h(),
+                    self.get_f(),
+                    node_string,
+                },
+            );
+        }
     };
 }
 

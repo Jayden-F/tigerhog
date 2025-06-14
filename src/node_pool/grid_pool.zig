@@ -3,6 +3,8 @@ const std = @import("std");
 pub fn GridPool(comptime State: type, comptime Node: type) type {
     return struct {
         const SearchNode = struct {
+            // Used to determine if the memory associated with this search node is valid.
+            // search nodes that do not much have been freed or are null.
             search_number: usize,
             node: ?*Node,
         };
@@ -16,7 +18,8 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
         allocator: std.mem.Allocator,
         pool: NodePool,
         map: NodeMap,
-        search_number: usize = 0,
+        // search_number is initialised to 1, so that the default initialised map is invalidated.
+        search_number: usize = 1,
 
         pub fn init(width: usize, height: usize, allocator: std.mem.Allocator) !Self {
             var map = try allocator.alloc(SearchNode, width * height);

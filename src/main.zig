@@ -14,6 +14,14 @@ const State = packed struct {
     pub inline fn get_y(self: *const Self) i32 {
         return self.y;
     }
+
+    pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
+        return try std.fmt.allocPrint(
+            allocator,
+            "x: {d}, y: {d},",
+            .{ self.get_x(), self.get_y() },
+        );
+    }
 };
 
 const Node = tigerhog.node.Node(State);
@@ -29,6 +37,8 @@ const NodePool = tigerhog.node_pool.GridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = tigerhog.heuristic.Octile(State);
 const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
+const Logger = tigerhog.logger.Logger(Node);
+
 const Search = tigerhog.search.UnidirectionalSearch(
     State,
     Node,
@@ -37,7 +47,6 @@ const Search = tigerhog.search.UnidirectionalSearch(
     Heuristic,
     Logger,
 );
-const Logger = tigerhog.logger.NoopLogger(Node);
 
 pub fn main() !void {
 
@@ -46,10 +55,14 @@ pub fn main() !void {
 
     const allocator = std.heap.smp_allocator;
 
-    try run_astar(allocator);
+    const writer = std.io.getStdOut().writer();
+    var logger = Logger.init(allocator, writer.any());
+    defer logger.deinit();
+
+    try run_astar(allocator, &logger);
 }
 
-pub fn run_astar(allocator: std.mem.Allocator) !void {
+pub fn run_astar(allocator: std.mem.Allocator, logger: *Logger) !void {
     const cwd = std.fs.cwd();
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
@@ -68,7 +81,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             var buffered_map_file = std.io.bufferedReader(map_file.reader());
             defer map_file.close();
 
-            // setting up algorithm
+            // initialise search components
             var domain = try Domain.load_map(allocator, buffered_map_file.reader());
             defer domain.deinit();
             var node_pool = try NodePool.init(domain.width, domain.height, allocator);
@@ -79,19 +92,17 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             defer open.deinit();
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
-            var logger = Logger.init();
-            defer logger.deinit();
 
-            // searching
+            // assemble search algorithm
             var search = Search.init(
                 &expander,
                 &open,
                 &heuristic,
-                &logger,
+                logger,
             );
-            defer search.deinit();
 
             for (scenario.instances) |instance| {
+                // searching
                 _ = try search.query(
                     State{
                         .x = instance.start_x,
@@ -103,8 +114,12 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     },
                 );
 
-                // const metrics = &search.metrics;
-                // try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
+                const metrics = &search.metrics;
+
+                // try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(instance, .{})});
+                try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
+                std.debug.assert(@abs(instance.lb - metrics.solution_cost) < 1e-6);
+                search.reset();
             }
         }
     }

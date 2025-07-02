@@ -8,9 +8,7 @@ pub fn Manhattan(comptime State: type) type {
             return .{};
         }
 
-        pub fn deinit(_: *Self) void {
-
-        }
+        pub fn deinit(_: *Self) void {}
 
         pub inline fn compute(_: *Self, current: State, target: State) f64 {
             const x_diff = @abs(current.get_x() - target.get_x());

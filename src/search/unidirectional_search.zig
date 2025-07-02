@@ -54,9 +54,13 @@ pub fn UnidirectionalSearch(
             self.metrics.reset();
         }
 
-        fn solution(_: *Self, target: *Node, allocator: std.mem.Allocator) ![]State {
+        pub fn get_metrics(self: *const Self) *const metrics.Metrics {
+            return &self.metrics;
+        }
+
+        fn solution(_: *const Self, target: *const Node, allocator: std.mem.Allocator) ![]State {
             var array = try std.ArrayList(State).initCapacity(allocator, @intFromFloat(target.get_g()));
-            var current: ?*Node = target;
+            var current: ?*const Node = target;
             while (current) |node| {
                 try array.append(node.get_state());
                 current = node.get_parent();
@@ -95,11 +99,12 @@ pub fn UnidirectionalSearch(
                         successor.set_g(g);
                         successor.set_f(f);
                         successor.set_parent(current);
-                        try self.open.push(successor);
-                    }
 
-                    self.metrics.nodes_generated += 1;
-                    try self.logger.generate(successor);
+                        try self.open.push(successor);
+                        try self.logger.generate(successor);
+
+                        self.metrics.nodes_generated += 1;
+                    }
                 }
 
                 try self.logger.close(current);

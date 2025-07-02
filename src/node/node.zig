@@ -75,7 +75,7 @@ pub fn Node(comptime State: type) type {
 
             return try std.fmt.allocPrint(
                 allocator,
-                "id: {d}, pId: {?d}, g: {e} h: {e}, f: {e}, {s}",
+                "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {s}",
                 .{
                     @as(u64, @bitCast(self.get_state())),
                     if (self.parent) |parent| @as(u64, @bitCast(parent.get_state())) else null,

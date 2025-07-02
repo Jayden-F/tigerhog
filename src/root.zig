@@ -36,9 +36,9 @@ const Domain = domain.BitGrid();
 const NodeMap = node_pool.GridPool(State, Node);
 const Open = open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = heuristic.Manhattan(State);
-const Expander = expander.GridExpander4Connected(State, Domain);
-const Search = search.UnidirectionalSearch(State, Node, NodeMap, Expander, Open, Heuristic);
+const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
 const Logger = logger.NoopLogger(Node);
+const Search = search.UnidirectionalSearch(State,  Node, Expander, Open, Heuristic, Logger);
 
 test "run astar" {
     const allocator = std.testing.allocator;
@@ -56,10 +56,17 @@ test "run astar" {
     defer _map.deinit();
     var _open = try Open.init(allocator, 1);
     defer _open.deinit();
+
     var _heuristic = Heuristic{};
-    var _expander = Expander.init(&_domain);
-    var _logger = Logger{};
-    var _search = Search.init(&_map, &_expander, &_open, &_heuristic, &_logger);
+    var _expander = Expander.init(&_domain, &_map);
+    var _logger = Logger.init();
+
+    var _search = Search.init(
+        &_expander,
+        &_open,
+        &_heuristic,
+        &_logger,
+    );
 
     std.debug.print("Searching\n", .{});
     _ = try _search.query(

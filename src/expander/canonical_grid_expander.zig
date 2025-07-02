@@ -177,7 +177,13 @@ pub fn CanonicalGridExpander(
 
             inline for (offsets) |offset| {
                 if (successors.contains(offset.dir))
-                    try self.add_neighbour(.{ .x = x + offset.dx, .y = y + offset.dy }, offset.cost);
+                    try self.add_neighbour(
+                        .{
+                            .x = x + offset.dx,
+                            .y = y + offset.dy,
+                        },
+                        offset.cost,
+                    );
             }
 
             return self.edges[0..self.num_neighbours];

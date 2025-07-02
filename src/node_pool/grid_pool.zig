@@ -25,7 +25,7 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
             var map = try allocator.alloc(SearchNode, width * height);
             @memset(map[0..], SearchNode{ .search_number = 0, .node = null });
 
-            const pool = try NodePool.initPreheated(allocator, width * height);
+            const pool = NodePool.init(allocator);
 
             return .{
                 .width = width,
@@ -50,6 +50,7 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
 
         pub inline fn generate(self: *Self, state: State) !*Node {
             @setRuntimeSafety(false);
+
             const index = self.get_index(state.get_x(), state.get_y());
             const search_node = &self.map[index];
 

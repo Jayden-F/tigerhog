@@ -47,5 +47,9 @@ pub fn load_gppc_scenarios(stream: anytype, allocator: std.mem.Allocator) !Scena
         };
         try instances.append(instance);
     }
-    return Scenario{ .instances = try instances.toOwnedSlice(), .map_name = try allocator.dupe(u8, map_name), .allocator = allocator };
+    return Scenario{
+        .instances = try instances.toOwnedSlice(),
+        .map_name = try allocator.dupe(u8, map_name),
+        .allocator = allocator,
+    };
 }

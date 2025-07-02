@@ -37,7 +37,7 @@ const NodePool = tigerhog.node_pool.GridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = tigerhog.heuristic.Octile(State);
 const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
-const Logger = tigerhog.logger.Logger(Node);
+const Logger = tigerhog.logger.NoopLogger(Node);
 
 const Search = tigerhog.search.UnidirectionalSearch(
     State,
@@ -54,51 +54,50 @@ pub fn main() !void {
     // var allocator = dba.allocator();
 
     const allocator = std.heap.smp_allocator;
-
-    const writer = std.io.getStdOut().writer();
-    var logger = Logger.init(allocator, writer.any());
-    defer logger.deinit();
-
-    try run_astar(allocator, &logger);
+    try run_astar(allocator);
 }
 
-pub fn run_astar(allocator: std.mem.Allocator, logger: *Logger) !void {
+pub fn run_astar(allocator: std.mem.Allocator) !void {
     const cwd = std.fs.cwd();
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
 
     while (try it.next()) |entry| {
         if (std.mem.eql(u8, entry.name[(entry.name.len - 5)..], ".scen")) {
-
+            try std.io.getStdOut().writer().print("{s}\n", .{entry.name});
             // reading problem
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
-            defer scen_file.close();
             var buffered_scen_file = std.io.bufferedReader(scen_file.reader());
             var scenario = try tigerhog.scenario.load_gppc_scenarios(buffered_scen_file.reader(), allocator);
             defer scenario.deinit();
 
+            scen_file.close();
+
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
             var buffered_map_file = std.io.bufferedReader(map_file.reader());
-            defer map_file.close();
 
             // initialise search components
             var domain = try Domain.load_map(allocator, buffered_map_file.reader());
             defer domain.deinit();
+            map_file.close();
+
             var node_pool = try NodePool.init(domain.width, domain.height, allocator);
             defer node_pool.deinit();
             var expander = Expander.init(&domain, &node_pool);
             defer expander.deinit();
-            var open = try Open.init(allocator, domain.width * domain.height);
+            var open = try Open.init(allocator, 2);
             defer open.deinit();
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
+            var logger = Logger.init();
+            defer logger.deinit();
 
             // assemble search algorithm
             var search = Search.init(
                 &expander,
                 &open,
                 &heuristic,
-                logger,
+                &logger,
             );
 
             for (scenario.instances) |instance| {
@@ -114,10 +113,15 @@ pub fn run_astar(allocator: std.mem.Allocator, logger: *Logger) !void {
                     },
                 );
 
-                const metrics = &search.metrics;
+                const metrics = search.get_metrics();
 
-                // try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(instance, .{})});
-                try std.io.getStdOut().writer().print("{},\n", .{std.json.fmt(metrics.*, .{})});
+                try std.io.getStdOut().writer().print(
+                    "{},\n",
+                    .{std.json.fmt(
+                        metrics.*,
+                        .{},
+                    )},
+                );
                 std.debug.assert(@abs(instance.lb - metrics.solution_cost) < 1e-6);
                 search.reset();
             }

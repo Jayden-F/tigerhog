@@ -51,7 +51,13 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         pub fn build(allocator: std.mem.Allocator, from: []const T) !Self {
             @setRuntimeSafety(false);
             const elements = try allocator.dupe(T, from);
-            var self = Self{ .allocator = allocator, .elements = elements, .capacity = elements.len, .len = elements.len, .heap_ops = 0 };
+            var self = Self{
+                .allocator = allocator,
+                .elements = elements,
+                .capacity = elements.len,
+                .len = elements.len,
+                .heap_ops = 0,
+            };
 
             const n = self.len >> 1;
             var i = n;
@@ -136,16 +142,11 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn grow(self: *Self, new_capacity: usize) !void {
-            @setRuntimeSafety(false);
             if (new_capacity <= self.capacity) {
                 return;
             }
 
-            const new_elements: []T = try self.allocator.alloc(T, new_capacity);
-            for (0..self.len) |i| {
-                new_elements[i] = self.elements[i];
-            }
-            self.allocator.free(self.elements);
+            const new_elements: []T = try self.allocator.realloc(self.elements, new_capacity);
             self.elements = new_elements;
             self.capacity = new_capacity;
         }
@@ -213,6 +214,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
 }
 
 const Node_u64 = Node(u64);
+
 fn lessThanPtr(a: *Node_u64, b: *Node_u64) bool {
     return a.value < b.value;
 }
@@ -221,56 +223,66 @@ fn lessThan(a: Node_u64, b: Node_u64) bool {
     return a.value < b.value;
 }
 
-// test "test priority queue" {
-//     std.debug.print("\n", .{});
-//
-//     const allocator = std.testing.allocator;
-//     const Queue = PriorityQueue(*Node_u64, lessThanPtr);
-//
-//     var queue = try Queue.init(allocator, 1);
-//     defer queue.deinit();
-//
-//     var n: u64 = 1_000_000;
-//     var nodes = try allocator.alloc(Node_u64, n);
-//     defer allocator.free(nodes);
-//     while (n > 0) : (n -= 1) {
-//         nodes[n - 1].value = n;
-//         try queue.push(&nodes[n - 1]);
-//         std.debug.assert(queue.contains(&nodes[n - 1]));
-//     }
-//
-//     while (queue.len > 0) {
-//         const node = try queue.pop();
-//         // std.debug.print("{}\n", .{node});
-//         std.debug.assert(!queue.contains(node));
-//     }
-//
-//     std.debug.print("heap ops: {}\n", .{queue.heap_ops});
-// }
-//
-// test "test build priority queue" {
-//     std.debug.print("\n", .{});
-//
-//     const allocator = std.testing.allocator;
-//     const Queue = PriorityQueue(Node_u64, lessThan);
-//
-//     var n: u64 = 1_000_000;
-//     var nodes = try allocator.alloc(Node_u64, n);
-//     defer allocator.free(nodes);
-//
-//     while (n > 1) : (n -= 1) {
-//         nodes[n - 1].value = n;
-//     }
-//
-//     var queue = try Queue.build(allocator, nodes);
-//     defer queue.deinit();
-//     std.debug.print("heap ops: {}\n", .{queue.heap_ops});
-//
-//     while (queue.len > 0) {
-//         const node = try queue.pop();
-//         std.debug.print("{}\n", .{node});
-//         std.debug.assert(!queue.contains(node));
-//     }
-//
-//     std.debug.print("heap ops: {}\n", .{queue.heap_ops});
-// }
+test "test priority queue" {
+    std.debug.print("\n", .{});
+
+    const allocator = std.testing.allocator;
+    const Queue = PriorityQueue(*Node_u64, lessThanPtr);
+
+    var queue = try Queue.init(allocator, 1);
+    defer queue.deinit();
+
+    var n: u64 = 1_000_000;
+    var nodes = try allocator.alloc(Node_u64, n);
+    defer allocator.free(nodes);
+    while (n > 0) : (n -= 1) {
+        nodes[n - 1].value = n;
+        try queue.push(&nodes[n - 1]);
+        std.debug.assert(queue.contains(&nodes[n - 1]));
+    }
+
+    while (queue.len > 0) {
+        const node = try queue.pop();
+        // std.debug.print("{}\n", .{node});
+        std.debug.assert(!queue.contains(node));
+    }
+
+    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
+}
+
+test "test build priority queue" {
+    std.debug.print("\n", .{});
+
+    const allocator = std.testing.allocator;
+    const Queue = PriorityQueue(Node_u64, lessThan);
+
+    var n: u64 = 1_000_000;
+    var nodes = try allocator.alloc(Node_u64, n);
+    defer allocator.free(nodes);
+
+    while (n > 1) : (n -= 1) {
+        nodes[n - 1].value = n;
+    }
+
+    var queue = try Queue.build(allocator, nodes);
+    defer queue.deinit();
+    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
+
+    while (queue.len > 0) {
+        const node = try queue.pop();
+        std.debug.assert(!queue.contains(node));
+    }
+
+    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
+}
+
+test "test_fuzz" {
+    const Context = struct {
+        fn testOne(context: @This(), input: []const u8) anyerror!void {
+            _ = context;
+            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
+            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
+        }
+    };
+    try std.testing.fuzz(Context{}, Context.testOne, .{});
+}

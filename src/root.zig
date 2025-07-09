@@ -38,7 +38,7 @@ const Open = open.PriorityQueue(*Node, lessThanFn);
 const Heuristic = heuristic.Manhattan(State);
 const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
 const Logger = logger.NoopLogger(Node);
-const Search = search.UnidirectionalSearch(State,  Node, Expander, Open, Heuristic, Logger);
+const Search = search.UnidirectionalSearch(State, Node, Expander, Open, Heuristic, Logger);
 
 test "run astar" {
     const allocator = std.testing.allocator;

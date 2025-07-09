@@ -2,25 +2,34 @@ const std = @import("std");
 
 const tigerhog = @import("tigerhog_lib");
 
-const State = packed struct {
+const State = struct {
     const Self = @This();
-    x: i32,
-    y: i32,
+    x: f64,
+    y: f64,
+    theta: f64,
 
-    pub inline fn get_x(self: *const Self) i32 {
+    pub inline fn get_x(self: *const Self) f64 {
         return self.x;
     }
 
-    pub inline fn get_y(self: *const Self) i32 {
+    pub inline fn get_y(self: *const Self) f64 {
         return self.y;
+    }
+
+    pub inline fn get_theta(self: *const Self) f64 {
+        return self.theta;
     }
 
     pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(
             allocator,
-            "x: {d}, y: {d},",
-            .{ self.get_x(), self.get_y() },
+            "x: {d}, y: {d}, theta: {d}",
+            .{ self.get_x(), self.get_y(), self.get_theta() },
         );
+    }
+
+    pub inline fn to_hash(self: *const Self) u64 {
+        return std.hash.Wyhash.hash(0, std.mem.asBytes(&self));
     }
 };
 
@@ -33,10 +42,10 @@ fn lessThanFn(a: *const Node, b: *const Node) bool {
 }
 
 const Domain = tigerhog.domain.BitGrid();
-const NodePool = tigerhog.node_pool.GridPool(State, Node);
+const NodePool = tigerhog.node_pool.BinnedGridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, lessThanFn);
-const Heuristic = tigerhog.heuristic.Octile(State);
-const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
+const Heuristic = tigerhog.heuristic.Dubins(State);
+const Expander = tigerhog.expander.HybridExpander(Domain, Node, NodePool);
 const Logger = tigerhog.logger.NoopLogger(Node);
 
 const Search = tigerhog.search.UnidirectionalSearch(
@@ -85,10 +94,11 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             defer node_pool.deinit();
             var expander = Expander.init(&domain, &node_pool);
             defer expander.deinit();
-            var open = try Open.init(allocator, 2);
+            var open = try Open.init(allocator, 72 * domain.width * domain.height);
             defer open.deinit();
-            var heuristic = Heuristic.init();
+            var heuristic = Heuristic.init(1.0 / @tan(std.math.degreesToRadians(10.0)));
             defer heuristic.deinit();
+
             var logger = Logger.init();
             defer logger.deinit();
 
@@ -100,30 +110,42 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                 &logger,
             );
 
-            for (scenario.instances) |instance| {
+            for (scenario.instances[3100..]) |instance| {
                 // searching
-                _ = try search.query(
+                const target = try search.query(
                     State{
                         .x = instance.start_x,
                         .y = instance.start_y,
+                        .theta = 0.0,
                     },
                     State{
                         .x = instance.goal_x,
                         .y = instance.goal_y,
+                        .theta = 0.0,
                     },
                 );
 
                 const metrics = search.get_metrics();
 
-                try std.io.getStdOut().writer().print(
+                const stdout = std.io.getStdOut().writer();
+                try stdout.print(
                     "{},\n",
                     .{std.json.fmt(
                         metrics.*,
                         .{},
                     )},
                 );
-                std.debug.assert(@abs(instance.lb - metrics.solution_cost) < 1e-6);
+
+                if (target) |reached| {
+                    const path = try search.solution(reached, allocator);
+                    const path_logger = tigerhog.logger.PathLogger(State).init(allocator, stdout.any());
+                    try path_logger.log_path(path);
+                }
+
+                // std.debug.assert(@abs(instance.lb - metrics.solution_cost) < 1e-6);
                 search.reset();
+
+                return;
             }
         }
     }

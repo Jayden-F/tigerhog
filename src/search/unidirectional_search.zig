@@ -58,7 +58,7 @@ pub fn UnidirectionalSearch(
             return &self.metrics;
         }
 
-        fn solution(_: *const Self, target: *const Node, allocator: std.mem.Allocator) ![]State {
+        pub fn solution(_: *const Self, target: *const Node, allocator: std.mem.Allocator) ![]State {
             var array = try std.ArrayList(State).initCapacity(allocator, @intFromFloat(target.get_g()));
             var current: ?*const Node = target;
             while (current) |node| {
@@ -85,7 +85,7 @@ pub fn UnidirectionalSearch(
                 const current: *Node = try self.open.pop();
                 self.metrics.nodes_expanded += 1;
                 try self.logger.expand(current);
-
+                // @floor(current.get_state().get_x()) == @floor(target.get_state().get_x()) and @floor(current.get_state().get_y()) == @floor(target.get_state().get_y())
                 if (current == target) {
                     return current;
                 }
@@ -93,16 +93,16 @@ pub fn UnidirectionalSearch(
                 for (try self.expander.expand(current)) |*edge| {
                     const successor: *Node = edge.node;
                     const g: f64 = current.get_g() + edge.cost;
-                    const f: f64 = g + self.heuristic.compute(successor.get_state(), target_state);
 
                     if (g < successor.get_g()) {
-                        successor.set_g(g);
-                        successor.set_f(f);
+                        successor.set_state(edge.state);
                         successor.set_parent(current);
+                        successor.set_g(g);
+                        const f: f64 = g + self.heuristic.compute(successor.get_state(), target_state);
+                        successor.set_f(f);
 
                         try self.open.push(successor);
                         try self.logger.generate(successor);
-
                         self.metrics.nodes_generated += 1;
                     }
                 }

@@ -1,5 +1,4 @@
 const std = @import("std");
-
 pub fn GridPool(comptime State: type, comptime Node: type) type {
     return struct {
         const SearchNode = struct {
@@ -41,17 +40,14 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
             self.pool.deinit();
         }
 
-        inline fn get_index(self: *const Self, x: i32, y: i32) usize {
-            @setRuntimeSafety(false);
-            const _x: usize = @intCast(x);
-            const _y: usize = @intCast(y);
+        inline fn get_index(self: *const Self, state: State) usize {
+            const _x: usize = @intFromFloat(state.get_x());
+            const _y: usize = @intFromFloat(state.get_y());
             return self.width * _y + _x;
         }
 
         pub inline fn generate(self: *Self, state: State) !*Node {
-            @setRuntimeSafety(false);
-
-            const index = self.get_index(state.get_x(), state.get_y());
+            const index = self.get_index(state);
             const search_node = &self.map[index];
 
             if (search_node.search_number != self.search_number) {
@@ -60,7 +56,7 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
                 search_node.* = .{ .node = node, .search_number = self.search_number };
             }
 
-            std.debug.assert(std.meta.eql(search_node.node.?.get_state(), state));
+            // std.debug.assert(std.meta.eql(search_node.node.?.get_state(), state));
             return search_node.node.?;
         }
 

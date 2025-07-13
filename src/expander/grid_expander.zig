@@ -10,6 +10,7 @@ pub fn GridExpander4Connected(
     const Neighbours = std.EnumSet(Direction);
 
     const Edge = struct {
+        state: Node.State_T,
         node: *Node,
         cost: f64,
     };
@@ -74,7 +75,7 @@ pub fn GridExpander4Connected(
         inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
             @setRuntimeSafety(false);
             const node: *Node = try self.generate(state);
-            self.edges[self.num_neighbours] = .{ .node = node, .cost = cost };
+            self.edges[self.num_neighbours] = .{ .state = state, .node = node, .cost = cost };
             self.num_neighbours += 1;
         }
 

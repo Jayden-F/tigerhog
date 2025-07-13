@@ -24,6 +24,7 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
             var map = try allocator.alloc(SearchNode, width * height);
             @memset(map[0..], SearchNode{ .search_number = 0, .node = null });
 
+            // const pool = try NodePool.initPreheated(allocator, width * height);
             const pool = NodePool.init(allocator);
 
             return .{
@@ -41,9 +42,19 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
         }
 
         inline fn get_index(self: *const Self, state: State) usize {
-            const _x: usize = @intFromFloat(state.get_x());
-            const _y: usize = @intFromFloat(state.get_y());
-            return self.width * _y + _x;
+            const x: usize = switch (@typeInfo(@TypeOf(state.get_x()))) {
+                .float => @intFromFloat(state.get_x()),
+                .int => @intCast(state.get_x()),
+                else => @compileError("Unsupported type for get_x()"),
+            };
+
+            const y: usize = switch (@typeInfo(@TypeOf(state.get_y()))) {
+                .float => @intFromFloat(state.get_y()),
+                .int => @intCast(state.get_y()),
+                else => @compileError("Unsupported type for get_y()"),
+            };
+
+            return y * self.width + x;
         }
 
         pub inline fn generate(self: *Self, state: State) !*Node {
@@ -56,7 +67,6 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
                 search_node.* = .{ .node = node, .search_number = self.search_number };
             }
 
-            // std.debug.assert(std.meta.eql(search_node.node.?.get_state(), state));
             return search_node.node.?;
         }
 

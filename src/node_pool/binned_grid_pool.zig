@@ -1,10 +1,6 @@
 const std = @import("std");
 const grid_pool = @import("./grid_pool.zig");
 
-pub fn wrap_angle(angle: f64, lower: f64, upper: f64) !f64 {
-    return try std.math.mod(f64, angle - lower, upper - lower) + lower;
-}
-
 pub fn BinnedGridPool(comptime State: type, comptime Node: type) type {
     return struct {
         const Self = @This();
@@ -28,6 +24,7 @@ pub fn BinnedGridPool(comptime State: type, comptime Node: type) type {
             for (self.grid_pools.items) |*pool| {
                 pool.deinit();
             }
+            self.grid_pools.deinit();
         }
 
         fn get_bin(_: *Self, state: State) !usize {

@@ -36,12 +36,12 @@ pub fn UnidirectionalSearch(
 
         pub fn deinit(_: *Self) void {}
 
-        pub fn query(self: *Self, start_state: State, target_state: State) !?*const Node {
+        pub fn query(self: *Self, start_state: State, target_state: ?State) !?*const Node {
             const timestamp_nanos = std.time.nanoTimestamp();
             const target: ?*const Node = try self.search(start_state, target_state);
             self.metrics.elapsed_time_nanos = std.time.nanoTimestamp() - timestamp_nanos;
-            if (target) |found| self.metrics.solution_cost = found.get_g();
 
+            if (target) |found| self.metrics.solution_cost = found.get_g();
             self.metrics.nodes_surplus = self.open.len;
             self.metrics.heap_ops = self.open.heap_ops;
 
@@ -61,6 +61,7 @@ pub fn UnidirectionalSearch(
         pub fn solution(_: *const Self, target: *const Node, allocator: std.mem.Allocator) ![]State {
             var array = try std.ArrayList(State).initCapacity(allocator, @intFromFloat(target.get_g()));
             var current: ?*const Node = target;
+
             while (current) |node| {
                 try array.append(node.get_state());
                 current = node.get_parent();
@@ -71,8 +72,8 @@ pub fn UnidirectionalSearch(
             return result;
         }
 
-        fn search(self: *Self, start_state: State, target_state: State) !?*const Node {
-            const target: *Node = try self.expander.generate(target_state);
+        fn search(self: *Self, start_state: State, target_state: ?State) !?*const Node {
+            const target: ?*Node = if (target_state) |state| try self.expander.generate(state) else null;
             const start: *Node = try self.expander.generate(start_state);
 
             start.set_g(0.0);
@@ -83,9 +84,10 @@ pub fn UnidirectionalSearch(
 
             while (!self.open.empty()) {
                 const current: *Node = try self.open.pop();
+
                 self.metrics.nodes_expanded += 1;
                 try self.logger.expand(current);
-                // @floor(current.get_state().get_x()) == @floor(target.get_state().get_x()) and @floor(current.get_state().get_y()) == @floor(target.get_state().get_y())
+
                 if (current == target) {
                     return current;
                 }
@@ -93,16 +95,17 @@ pub fn UnidirectionalSearch(
                 for (try self.expander.expand(current)) |*edge| {
                     const successor: *Node = edge.node;
                     const g: f64 = current.get_g() + edge.cost;
+                    const f: f64 = g + self.heuristic.compute(edge.state, target_state);
 
                     if (g < successor.get_g()) {
                         successor.set_state(edge.state);
                         successor.set_parent(current);
                         successor.set_g(g);
-                        const f: f64 = g + self.heuristic.compute(successor.get_state(), target_state);
                         successor.set_f(f);
 
                         try self.open.push(successor);
                         try self.logger.generate(successor);
+
                         self.metrics.nodes_generated += 1;
                     }
                 }

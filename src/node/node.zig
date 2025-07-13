@@ -77,14 +77,20 @@ pub fn Node(comptime State: type) type {
                 allocator,
                 "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {s}",
                 .{
-                    @as(u64, self.get_state().to_hash()),
-                    if (self.parent) |parent| @as(u64, @bitCast(parent.get_state().to_hash())) else null,
+                    self.get_state().to_id(),
+                    if (self.parent) |parent| parent.get_state().to_id() else null,
                     self.get_g(),
                     self.get_h(),
                     self.get_f(),
                     node_string,
                 },
             );
+        }
+
+        pub fn lessThanFn(self: *const Self, other: *const Self) bool {
+            if (self.get_f() < other.get_f()) return true;
+            if (self.get_f() > other.get_f()) return false;
+            return self.get_g() > other.get_g();
         }
     };
 }

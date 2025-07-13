@@ -49,7 +49,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn build(allocator: std.mem.Allocator, from: []const T) !Self {
-            @setRuntimeSafety(false);
             const elements = try allocator.dupe(T, from);
             var self = Self{
                 .allocator = allocator,
@@ -80,7 +79,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn push_assume_cap(self: *Self, value: T) void {
-            @setRuntimeSafety(false);
             if (self.contains(value)) {
                 self.decrease_key(value);
                 return;
@@ -92,7 +90,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn push(self: *Self, value: T) !void {
-            @setRuntimeSafety(false);
+
             if (self.contains(value)) {
                 self.decrease_key(value);
                 return;
@@ -108,7 +106,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn pop(self: *Self) PriorityQueueError!T {
-            @setRuntimeSafety(false);
             switch (self.len) {
                 0 => {
                     return PriorityQueueError.QueueEmpty;
@@ -124,7 +121,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn peek(self: *Self) T {
-            @setRuntimeSafety(false);
             switch (self.len) {
                 0 => return PriorityQueueError.QueueEmpty,
                 else => return self.elements[0],
@@ -145,7 +141,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
             if (new_capacity <= self.capacity) {
                 return;
             }
-
             const new_elements: []T = try self.allocator.realloc(self.elements, new_capacity);
             self.elements = new_elements;
             self.capacity = new_capacity;
@@ -156,7 +151,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub inline fn contains(self: *const Self, value: T) bool {
-            @setRuntimeSafety(false);
             const priority = value.get_priority();
             if (priority < self.len) {
                 return std.meta.eql(value, self.elements[priority]);
@@ -165,7 +159,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn sift_up(self: *Self, index: usize) void {
-            @setRuntimeSafety(false);
             self.heap_ops += 1;
             var current = index;
             while (current > 0) {
@@ -180,7 +173,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn sift_down(self: *Self, index: usize) void {
-            @setRuntimeSafety(false);
             self.heap_ops += 1;
             var current = index;
             const first_leaf_index: usize = self.len >> 1;
@@ -203,7 +195,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn swap(self: *Self, a: usize, b: usize) void {
-            @setRuntimeSafety(false);
             const temp = self.elements[b];
             self.elements[b] = self.elements[a];
             self.elements[a] = temp;

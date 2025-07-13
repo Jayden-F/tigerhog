@@ -1,9 +1,6 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
-
-pub fn wrap_angle(angle: f64, lower: f64, upper: f64) f64 {
-    return @mod(angle - lower, upper - lower) + lower;
-}
+const angles = @import("../utils/angles.zig");
 
 pub fn HybridExpander(
     comptime Domain: type,
@@ -18,18 +15,37 @@ pub fn HybridExpander(
 
     return struct {
         const Self = @This();
-        const controls = [_]struct { steering_angle: f64, distance: f64, cost: f64 }{
-            .{ .steering_angle = 0, .distance = 1, .cost = 1 },
-            .{ .steering_angle = -std.math.degreesToRadians(10), .distance = 1, .cost = 5 },
-            .{ .steering_angle = std.math.degreesToRadians(10), .distance = 1, .cost = 5 },
-            .{ .steering_angle = -std.math.degreesToRadians(10), .distance = -1, .cost = 10 },
-            .{ .steering_angle = std.math.degreesToRadians(10), .distance = -1, .cost = 10 },
+
+        pub const N = 6;
+        pub const Nxf64 = @Vector(N, f64);
+
+        pub const ControlBatch = struct {
+            steering_angle: Nxf64,
+            distance: Nxf64,
+            cost: Nxf64,
+        };
+
+        const @"10deg": f64 = std.math.degreesToRadians(10);
+
+        const control_batch = ControlBatch{
+            .steering_angle = .{
+                0.0, -@"10deg", @"10deg",
+                0.0, -@"10deg", @"10deg",
+            },
+            .distance = .{
+                1.0,  1.0,  1.0,
+                -1.0, -1.0, -1.0,
+            },
+            .cost = .{
+                1.0,  1.0,  1.0,
+                15.0, 15.0, 15.0,
+            },
         };
 
         domain: *Domain,
         node_pool: *NodePool,
 
-        edges: [controls.len]Edge = undefined,
+        edges: [N]Edge = undefined,
 
         num_neighbours: usize = 0,
 
@@ -42,21 +58,45 @@ pub fn HybridExpander(
 
         pub fn deinit(_: *Self) void {}
 
-        inline fn propogate(_: *const Self, state: *const Node.State_T, steering_angle: f64, distance: f64) !Node.State_T {
-            const x: f64 = state.get_x();
-            const y: f64 = state.get_y();
-            const theta: f64 = state.get_theta();
-            const curvature: f64 = @tan(steering_angle) / 1;
-            const new_theta = theta + curvature * distance;
+        pub const StateBatch = struct {
+            x: Nxf64,
+            y: Nxf64,
+            theta: Nxf64,
+        };
 
-            return if (@abs(curvature) <= 1e-6) .{
-                .x = x + distance * @cos(theta),
-                .y = y + distance * @sin(theta),
-                .theta = theta,
-            } else .{
-                .x = x + (@sin(new_theta) - @sin(theta)) / curvature,
-                .y = y - (@cos(new_theta) - @cos(theta)) / curvature,
-                .theta = wrap_angle(new_theta, -std.math.pi, std.math.pi),
+        pub fn propagate_many(
+            state: *const Node.State_T,
+            steering_angles: Nxf64,
+            distances: Nxf64,
+        ) StateBatch {
+            const x: Nxf64 = @splat(state.get_x());
+            const y: Nxf64 = @splat(state.get_y());
+            const theta: Nxf64 = @splat(state.get_theta());
+
+            const curvature = @tan(steering_angles);
+            const new_theta = theta + curvature * distances;
+
+            const epsilon: Nxf64 = comptime @splat(1e-6);
+            const is_straight = @abs(curvature) <= epsilon;
+
+            const sin_theta = @sin(theta);
+            const cos_theta = @cos(theta);
+            const sin_new = @sin(new_theta);
+            const cos_new = @cos(new_theta);
+
+            const x_straight = x + distances * cos_theta;
+            const y_straight = y + distances * sin_theta;
+
+            const x_arc = x + (sin_new - sin_theta) / curvature;
+            const y_arc = y + (cos_theta - cos_new) / curvature;
+
+            const out_x = @select(f64, is_straight, x_straight, x_arc);
+            const out_y = @select(f64, is_straight, y_straight, y_arc);
+
+            return .{
+                .x = out_x,
+                .y = out_y,
+                .theta = new_theta, // Keep unwrapped for now
             };
         }
 
@@ -72,10 +112,22 @@ pub fn HybridExpander(
             const current_state: Node.State_T = current.get_state();
             std.debug.assert(self.is_valid(current_state));
 
-            inline for (controls) |control| {
-                const succ = try self.propogate(&current_state, control.steering_angle, control.distance);
-                if (self.is_valid(succ)) {
-                    try self.add_neighbour(succ, control.cost);
+            const batch = propagate_many(&current_state, control_batch.steering_angle, control_batch.distance);
+
+            var i: usize = 0;
+            while (i < N) : (i += 1) {
+                const x_i = batch.x[i];
+                const y_i = batch.y[i];
+                const theta_i = angles.wrap_angle(batch.theta[i], -std.math.pi, std.math.pi);
+
+                const x_cell: i32 = @intFromFloat(x_i);
+                const y_cell: i32 = @intFromFloat(y_i);
+                if (self.domain.is_valid(x_cell, y_cell)) {
+                    try self.add_neighbour(.{
+                        .x = x_i,
+                        .y = y_i,
+                        .theta = theta_i,
+                    }, control_batch.cost[i]);
                 }
             }
 

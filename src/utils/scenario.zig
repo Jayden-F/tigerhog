@@ -1,10 +1,10 @@
 const std = @import("std");
 
 const Instance = struct {
-    start_x: f64,
-    start_y: f64,
-    goal_x: f64,
-    goal_y: f64,
+    start_x: i32,
+    start_y: i32,
+    goal_x: i32,
+    goal_y: i32,
     lb: f64,
 };
 
@@ -39,10 +39,10 @@ pub fn load_gppc_scenarios(stream: anytype, allocator: std.mem.Allocator) !Scena
         _ = tokens.next().?;
 
         const instance = Instance{
-            .start_x = try std.fmt.parseFloat(f64, tokens.next().?),
-            .start_y = try std.fmt.parseFloat(f64, tokens.next().?),
-            .goal_x = try std.fmt.parseFloat(f64, tokens.next().?),
-            .goal_y = try std.fmt.parseFloat(f64, tokens.next().?),
+            .start_x = try std.fmt.parseInt(i32, tokens.next().?, 10),
+            .start_y = try std.fmt.parseInt(i32, tokens.next().?, 10),
+            .goal_x = try std.fmt.parseInt(i32, tokens.next().?, 10),
+            .goal_y = try std.fmt.parseInt(i32, tokens.next().?, 10),
             .lb = try std.fmt.parseFloat(f64, tokens.next().?),
         };
         try instances.append(instance);

@@ -9,36 +9,16 @@ pub const node_pool = @import("node_pool/mod.zig");
 pub const open = @import("open/pqueue.zig");
 pub const search = @import("search/unidirectional_search.zig");
 pub const scenario = @import("utils/scenario.zig");
+pub const state = @import("state/mod.zig");
 
-const State = struct {
-    const Self = @This();
-    x: i32,
-    y: i32,
-
-    pub fn get_x(self: *const Self) i32 {
-        return self.x;
-    }
-
-    pub fn get_y(self: *const Self) i32 {
-        return self.y;
-    }
-};
-
-const Node = node.Node(State);
-
-fn lessThanFn(a: *Node, b: *Node) bool {
-    if (a.get_f() < b.get_f()) return true;
-    if (a.get_f() > b.get_f()) return false;
-    return a.get_g() > b.get_g();
-}
-
+const Node = node.Node(state.State);
 const Domain = domain.BitGrid();
-const NodeMap = node_pool.GridPool(State, Node);
-const Open = open.PriorityQueue(*Node, lessThanFn);
-const Heuristic = heuristic.Manhattan(State);
+const NodeMap = node_pool.GridPool(state.State, Node);
+const Open = open.PriorityQueue(*Node, node.lessThanFn);
+const Heuristic = heuristic.Manhattan(state.State);
 const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
 const Logger = logger.NoopLogger(Node);
-const Search = search.UnidirectionalSearch(State, Node, Expander, Open, Heuristic, Logger);
+const Search = search.UnidirectionalSearch(state.State, Node, Expander, Open, Heuristic, Logger);
 
 test "run astar" {
     const allocator = std.testing.allocator;
@@ -70,8 +50,8 @@ test "run astar" {
 
     std.debug.print("Searching\n", .{});
     _ = try _search.query(
-        State{ .x = 0, .y = 0 },
-        State{ .x = size - 1, .y = size - 1 },
+        state.State{ .x = 0, .y = 0 },
+        state.State{ .x = size - 1, .y = size - 1 },
     );
     const metrics = &_search.metrics;
     std.debug.print("{}\n", .{metrics});

@@ -17,7 +17,7 @@ pub fn Logger(comptime Node: type) type {
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn initialise(self: *const Self, start: *const Node, goal: *const Node) !void {
+        pub fn initialise(self: *const Self, start: *const Node, goal: ?*const Node) !void {
             const header =
                 \\version: 1.4.0
                 \\views:
@@ -38,7 +38,7 @@ pub fn Logger(comptime Node: type) type {
             ;
             try self.writer.print(header, .{});
             try self.log("source", start);
-            try self.log("destination", goal);
+            try self.log("destination", goal.?);
         }
 
         pub fn expand(self: *const Self, node: *const Node) !void {

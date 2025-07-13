@@ -27,13 +27,12 @@ pub fn PathLogger(comptime State: type) type {
                 \\version: 1.4.0
                 \\views:
                 \\  main:
-                \\    - $: rect
-                \\      width: .25
-                \\      height: 0.25
+                \\    - $: circle
+                \\      radius: 0.125
                 \\      fill: ${{{{color[$.type]}}}}
                 \\      alpha: 1
-                \\      x: ${{{{ $.x - 0.125}}}}
-                \\      y: ${{{{ $.y - 0.125}}}}
+                \\      x: ${{{{ $.x }}}}
+                \\      y: ${{{{ $.y }}}}
                 \\pivot:
                 \\  x: ${{{{ $.x }}}}
                 \\  y: ${{{{ $.y }}}}

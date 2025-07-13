@@ -1,37 +1,33 @@
 const std = @import("std");
 
-const Ordering = enum {
-    Less,
-    Greater,
-    Equal,
-};
+const Order = std.math.Order;
 
-fn compare_function(comptime T: type, want: T) fn (T) Ordering {
+fn compare_function(comptime T: type, want: T) fn (T) Order {
     return struct {
-        pub fn cmp_fn(what: T) Ordering {
+        pub inline fn cmp_fn(what: T) Order {
             if (what < want) {
-                return Ordering.Less;
+                return .lt;
             } else if (what > want) {
-                return Ordering.Greater;
+                return .gt;
             } else {
-                return Ordering.Equal;
+                return .eq;
             }
         }
     }.cmp_fn;
 }
 
-pub fn binary_search(comptime T: type, values: []T, compare_fn: fn (T) Ordering) usize {
+pub fn binary_search(comptime T: type, values: []T, compare_fn: fn (T) Order) usize {
     var low: usize = 0;
     var high: usize = 0;
 
     while (low < high) {
-        const mid = low + (high - low) / 2;
-        const value = values[mid];
+        const mid: usize = low + (high - low) / 2;
+        const value: T = values[mid];
 
         switch (compare_fn(value)) {
-            .Greater => high = mid,
-            .Less => low = mid + 1,
-            .Equal => return mid,
+            .gt => high = mid,
+            .lt => low = mid + 1,
+            .eq => return mid,
         }
     }
     return low;

@@ -90,7 +90,6 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn push(self: *Self, value: T) !void {
-
             if (self.contains(value)) {
                 self.decrease_key(value);
                 return;
@@ -105,17 +104,21 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
             self.len = new_len;
         }
 
+        pub fn unchecked_pop(self: *Self) T {
+            self.len -= 1;
+            self.swap(0, self.len);
+            self.sift_down(0);
+            self.elements[self.len].set_priority(std.math.maxInt(usize));
+            return self.elements[self.len];
+        }
+
         pub fn pop(self: *Self) PriorityQueueError!T {
             switch (self.len) {
                 0 => {
                     return PriorityQueueError.QueueEmpty;
                 },
                 else => {
-                    self.len -= 1;
-                    self.swap(0, self.len);
-                    self.sift_down(0);
-                    self.elements[self.len].set_priority(std.math.maxInt(usize));
-                    return self.elements[self.len];
+                    return self.unchecked_pop();
                 },
             }
         }

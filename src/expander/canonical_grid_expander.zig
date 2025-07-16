@@ -169,6 +169,7 @@ pub fn CanonicalGridExpander(
             const current_state = current.get_state();
             const x: i32 = current_state.get_x();
             const y: i32 = current_state.get_y();
+
             std.debug.assert(self.domain.is_valid(x, y));
 
             const neighbours = self.get_neighbours(x, y);

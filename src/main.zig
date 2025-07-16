@@ -3,7 +3,6 @@ const tigerhog = @import("libtigerhog");
 
 pub fn compute_perfect_heuristic(allocator: std.mem.Allocator, domain: *tigerhog.domain.BitGrid(), target: tigerhog.state.State) !tigerhog.heuristic.Perfect.LookupHeuristic(tigerhog.state.SE2) {
     const State = tigerhog.state.State;
-
     const Node = tigerhog.node.Node(State);
     const NodePool = tigerhog.node_pool.GridPool(State, Node);
     const Expander = tigerhog.expander.CanonicalGridExpander(tigerhog.domain.BitGrid(), Node, NodePool);
@@ -37,22 +36,18 @@ pub fn compute_perfect_heuristic(allocator: std.mem.Allocator, domain: *tigerhog
     try std.io.getStdOut().writer().print("Computing Heuristic\n", .{});
     _ = try perfect.query(target, null);
 
-    const metric = perfect.get_metrics();
+    const metrics = perfect.get_metrics();
 
-    try std.io.getStdOut().writer().print("Complete {}\n", .{metric.*});
+    try std.io.getStdOut().writer().print(
+        "{},\n",
+        .{std.json.fmt(
+            metrics.*,
+            .{},
+        )},
+    );
 
     const result = tigerhog.heuristic.Perfect.LookupHeuristic(tigerhog.state.SE2).init(domain.width, domain.height, logger.get_table(), allocator);
     return result;
-}
-
-pub fn main() !void {
-    // var dba = std.heap.DebugAllocator(.{ .safety = true, .verbose_log = true }){};
-    // const allocator = dba.allocator();
-
-    const allocator = std.heap.smp_allocator;
-    try run_astar(allocator);
-
-    // std.debug.assert(!dba.detectLeaks());
 }
 
 pub fn run_astar(allocator: std.mem.Allocator) !void {
@@ -75,6 +70,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
     );
 
     const stdout = std.io.getStdOut().writer();
+
     const cwd = std.fs.cwd();
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
@@ -101,26 +97,26 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             defer node_pool.deinit();
             var expander = Expander.init(&domain, &node_pool);
             defer expander.deinit();
-            var open = try Open.init(allocator, 32 * domain.width * domain.height);
+            var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
-            var heuristic_dubins = tigerhog.heuristic.Dubins(State).init(5);
+            var heuristic = tigerhog.heuristic.Max(State).init(allocator);
+            defer heuristic.deinit();
 
+            // const search_trace = try cwd.createFile("search.trace.yaml", .{});
             var logger = Logger.init();
             defer logger.deinit();
 
-            for (scenario.instances[1998..]) |instance| {
-                var heuristic_perfect = try compute_perfect_heuristic(
-                    allocator,
-                    &domain,
-                    .{
-                        .x = instance.goal_x,
-                        .y = instance.goal_y,
-                    },
-                );
+            for (scenario.instances) |instance| {
+                var h_dubins = tigerhog.heuristic.Dubins(State).init(11.27);
+                defer h_dubins.deinit();
+                var h_perfect = try compute_perfect_heuristic(allocator, &domain, .{
+                    .x = instance.goal_x,
+                    .y = instance.goal_y,
+                });
+                defer h_perfect.deinit();
 
-                var heuristic = Heuristic.init(allocator);
-                try heuristic.add(&heuristic_dubins);
-                try heuristic.add(&heuristic_perfect);
+                try heuristic.add(&h_dubins);
+                try heuristic.add(&h_perfect);
 
                 // assemble search algorithm
                 var search = Search.init(
@@ -131,7 +127,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                 );
 
                 // searching
-                const target = try search.query(
+                _ = try search.query(
                     State{
                         .x = @floatFromInt(instance.start_x),
                         .y = @floatFromInt(instance.start_y),
@@ -154,15 +150,24 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     )},
                 );
 
-                if (target) |reached| {
-                    const path = try search.solution(reached, allocator);
-                    const path_logger = tigerhog.logger.PathLogger(State).init(allocator, stdout.any());
-                    try path_logger.log_path(path);
-                }
+                // if (target) |reached| {
+                //     const path = try search.solution(reached, allocator);
+                //     const path_logger = tigerhog.logger.PathLogger(State).init(allocator, stdout.any());
+                //     try path_logger.log_path(path);
+                // }
 
                 search.reset();
-                return;
             }
         }
     }
+}
+
+pub fn main() !void {
+    // var dba = std.heap.DebugAllocator(.{ .safety = true, .verbose_log = true }){};
+    // const allocator = dba.allocator();
+
+    const allocator = std.heap.smp_allocator;
+    try run_astar(allocator);
+
+    // std.debug.assert(!dba.detectLeaks());
 }

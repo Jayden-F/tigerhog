@@ -83,7 +83,8 @@ pub fn UnidirectionalSearch(
             try self.logger.initialise(start, target);
 
             while (!self.open.empty()) {
-                const current: *Node = try self.open.pop();
+
+                const current: *Node = self.open.unchecked_pop();
 
                 self.metrics.nodes_expanded += 1;
                 try self.logger.expand(current);
@@ -94,6 +95,7 @@ pub fn UnidirectionalSearch(
 
                 for (try self.expander.expand(current)) |*edge| {
                     const successor: *Node = edge.node;
+
                     const g: f64 = current.get_g() + edge.cost;
                     const f: f64 = g + self.heuristic.compute(edge.state, target_state);
 
@@ -104,9 +106,9 @@ pub fn UnidirectionalSearch(
                         successor.set_f(f);
 
                         try self.open.push(successor);
-                        try self.logger.generate(successor);
 
                         self.metrics.nodes_generated += 1;
+                        try self.logger.generate(successor);
                     }
                 }
 

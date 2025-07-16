@@ -17,7 +17,7 @@ pub fn Dubins(comptime State: type) type {
         pub fn compute(self: *Self, current: State, target: ?State) f64 {
             const x = current.get_x() - target.?.get_x();
             const y = current.get_y() - target.?.get_y();
-            const theta = angles.wrap_angle(current.get_theta() - target.?.get_theta(), -std.math.pi, std.math.pi);
+            const theta = angles.wrap(f64, current.get_theta() - target.?.get_theta(), -std.math.pi, std.math.pi);
             return @sqrt(x * x + y * y) + 2 * self.radius * std.math.sin(@abs(theta) / 2.0);
         }
     };

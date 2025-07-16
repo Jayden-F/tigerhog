@@ -1,3 +1,3 @@
-pub fn wrap_angle(angle: f64, lower: f64, upper: f64) f64 {
-    return @mod(angle - lower, upper - lower) + lower;
+pub fn wrap(comptime T: type, value: T, lower: T, upper: T) T {
+    return @mod(value - lower, upper - lower) + lower;
 }

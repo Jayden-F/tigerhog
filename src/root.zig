@@ -11,16 +11,16 @@ pub const search = @import("search/unidirectional_search.zig");
 pub const scenario = @import("utils/scenario.zig");
 pub const state = @import("state/mod.zig");
 
-const Node = node.Node(state.State);
-const Domain = domain.BitGrid();
-const NodeMap = node_pool.GridPool(state.State, Node);
-const Open = open.PriorityQueue(*Node, node.lessThanFn);
-const Heuristic = heuristic.Manhattan(state.State);
-const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
-const Logger = logger.NoopLogger(Node);
-const Search = search.UnidirectionalSearch(state.State, Node, Expander, Open, Heuristic, Logger);
-
 test "run astar" {
+    const Node = node.Node(state.State);
+    const Domain = domain.BitGrid();
+    const NodeMap = node_pool.GridPool(state.State, Node);
+    const Open = open.PriorityQueue(*Node, Node.lessThanFn);
+    const Heuristic = heuristic.Manhattan(state.State);
+    const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
+    const Logger = logger.NoopLogger(Node);
+    const Search = search.UnidirectionalSearch(state.State, Node, Expander, Open, Heuristic, Logger);
+
     const allocator = std.testing.allocator;
     const size = 10_000;
     var _domain = try Domain.init(allocator, size, size);

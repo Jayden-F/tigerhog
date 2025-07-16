@@ -13,12 +13,8 @@ pub const State = packed struct {
         return self.y;
     }
 
-    pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(
-            allocator,
-            "x: {d}, y: {d}",
-            .{ self.get_x(), self.get_y() },
-        );
+    pub fn format(self: *const Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("x: {d}, y: {d}", .{ self.get_x(), self.get_y() });
     }
 
     pub inline fn to_id(self: *const Self) u64 {

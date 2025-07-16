@@ -25,20 +25,20 @@ pub fn HybridExpander(
             cost: Nxf64,
         };
 
-        const @"10deg": f64 = std.math.degreesToRadians(10);
+        const turn_radius: f64 = std.math.degreesToRadians(10);
 
         const control_batch = ControlBatch{
             .steering_angle = .{
-                0.0, -@"10deg", @"10deg",
-                0.0, -@"10deg", @"10deg",
+                0.0, -turn_radius, turn_radius,
+                0.0, -turn_radius, turn_radius,
             },
             .distance = .{
                 1.0,  1.0,  1.0,
                 -1.0, -1.0, -1.0,
             },
             .cost = .{
-                1.0,  1.0,  1.0,
-                15.0, 15.0, 15.0,
+                1.0,  1.05, 1.05,
+                1.25, 1.25, 1.25,
             },
         };
 
@@ -118,7 +118,7 @@ pub fn HybridExpander(
             while (i < N) : (i += 1) {
                 const x_i = batch.x[i];
                 const y_i = batch.y[i];
-                const theta_i = angles.wrap_angle(batch.theta[i], -std.math.pi, std.math.pi);
+                const theta_i = angles.wrap(f64, batch.theta[i], -std.math.pi, std.math.pi);
 
                 const x_cell: i32 = @intFromFloat(x_i);
                 const y_cell: i32 = @intFromFloat(y_i);

@@ -4,16 +4,14 @@ pub fn Logger(comptime Node: type) type {
     return struct {
         const Self = @This();
 
-        allocator: std.mem.Allocator,
         writer: std.io.AnyWriter,
 
         fn log(self: *const Self, name: []const u8, node: *const Node) !void {
-            const node_string: []const u8 = try node.to_string(self.allocator);
-            defer self.allocator.free(node_string);
-            try self.writer.print("  - {{ type: \"{s}\", {s} }}\n", .{ name, node_string });
+            try self.writer.print("  - {{ type: \"{s}\", {} }}\n", .{ name, node });
         }
-        pub fn init(allocator: std.mem.Allocator, writer: anytype) Self {
-            return .{ .allocator = allocator, .writer = writer };
+
+        pub fn init(writer: std.io.AnyWriter) Self {
+            return .{ .writer = writer };
         }
         pub fn deinit(_: *Self) void {}
 

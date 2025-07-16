@@ -69,20 +69,16 @@ pub fn Node(comptime State: type) type {
             return self.priority;
         }
 
-        pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
-            const node_string = try self.get_state().to_string(allocator);
-            defer allocator.free(node_string);
-
-            return try std.fmt.allocPrint(
-                allocator,
-                "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {s}",
+        pub fn format(self: *const Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+            try writer.print(
+                "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {}",
                 .{
                     self.get_state().to_id(),
                     if (self.parent) |parent| parent.get_state().to_id() else null,
                     self.get_g(),
                     self.get_h(),
                     self.get_f(),
-                    node_string,
+                    self.get_state(),
                 },
             );
         }

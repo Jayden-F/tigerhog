@@ -4,22 +4,21 @@ pub fn PathLogger(comptime State: type) type {
     return struct {
         const Self = @This();
 
-        allocator: std.mem.Allocator,
         writer: std.io.AnyWriter,
 
+        pub fn init(writer: anytype) Self {
+            return .{ .writer = writer };
+        }
+
         fn log(self: *const Self, name: []const u8, state: State, id: usize, pId: ?usize) !void {
-            const state_string: []const u8 = try state.to_string(self.allocator);
-            defer self.allocator.free(state_string);
-            try self.writer.print("  - {{ type: \"{s}\", {s}, id: \"{d}\", pId: \"{?d}\" }}\n", .{
+            try self.writer.print("  - {{ type: \"{s}\", {}, id: \"{d}\", pId: \"{?d}\" }}\n", .{
                 name,
-                state_string,
+                state,
                 id,
                 pId,
             });
         }
-        pub fn init(allocator: std.mem.Allocator, writer: anytype) Self {
-            return .{ .allocator = allocator, .writer = writer };
-        }
+
         pub fn deinit(_: *Self) void {}
 
         fn initialise(self: *const Self) !void {

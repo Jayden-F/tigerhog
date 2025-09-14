@@ -13,4 +13,18 @@ pub const Metrics = struct {
     pub fn reset(self: *Self) void {
         self.* = Metrics{};
     }
+
+    pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+        return try writer.print(
+            "Metrics{{ .nodes_expanded = {}, .nodes_generated = {}, .nodes_surplus = {}, .solution_cost = {d}, .heap_ops = {}, .elapsed_time_nanos = {} }}",
+            .{
+                self.nodes_expanded,
+                self.nodes_generated,
+                self.nodes_surplus,
+                self.solution_cost,
+                self.heap_ops,
+                self.elapsed_time_nanos,
+            },
+        );
+    }
 };

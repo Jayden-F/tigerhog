@@ -11,7 +11,7 @@ pub fn PathLogger(comptime State: type) type {
         }
 
         fn log(self: *const Self, name: []const u8, state: State, id: usize, pId: ?usize) !void {
-            try self.writer.print("  - {{ type: \"{s}\", {}, id: \"{d}\", pId: \"{?d}\" }}\n", .{
+            try self.writer.print("  - {{ type: \"{s}\", {f}, id: \"{d}\", pId: \"{?d}\" }}\n", .{
                 name,
                 state,
                 id,

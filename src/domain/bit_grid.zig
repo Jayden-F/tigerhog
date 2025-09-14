@@ -21,21 +21,19 @@ pub fn BitGrid() type {
             return .{ .width = width, .height = height, .padded_width_bytes = padded_width_bytes, .padded_width_bits = padded_width_bits, .data = data };
         }
 
-        pub fn load_map(allocator: std.mem.Allocator, stream: anytype) !Self {
-            var header: [128]u8 = undefined;
-            _ = try stream.readUntilDelimiter(&header, '\n');
-            const height_line = try stream.readUntilDelimiter(&header, '\n');
+        pub fn load_map(reader: *std.Io.Reader, allocator: std.mem.Allocator) !Self {
+
+            _ = try reader.takeDelimiterExclusive('\n');
+            const height_line = try reader.takeDelimiterExclusive('\n');
             const height = try std.fmt.parseInt(usize, height_line[7..], 10);
-            const width_line = try stream.readUntilDelimiter(&header, '\n');
+            const width_line = try reader.takeDelimiterExclusive('\n');
             const width = try std.fmt.parseInt(usize, width_line[6..], 10);
-            _ = try stream.readUntilDelimiter(&header, '\n');
+            _ = try reader.takeDelimiterExclusive('\n');
 
             var result = try init(allocator, width, height);
 
-            const row_buffer: []u8 = try allocator.alloc(u8, width + 1);
-            defer allocator.free(row_buffer);
             for (0..height) |i| {
-                const row_line = try stream.readUntilDelimiter(row_buffer, '\n');
+                const row_line = try reader.takeDelimiterExclusive('\n');
                 for (0..width) |j| {
                     result.set(@intCast(j), @intCast(i), row_line[j] == '.');
                 }

@@ -17,7 +17,7 @@ pub inline fn get_theta(self: *const Self) f64 {
     return self.theta;
 }
 
-pub fn format(self: *const Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
     return try writer.print(
         "x: {d}, y: {d}, theta: {d}",
         .{ self.get_x(), self.get_y(), self.get_theta() },

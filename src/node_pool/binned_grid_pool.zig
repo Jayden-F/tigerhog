@@ -6,10 +6,10 @@ pub fn BinnedGridPool(comptime State: type, comptime Node: type) type {
         const Self = @This();
 
         const num_bins: usize = 36;
-        grid_pools: std.ArrayList(grid_pool.GridPool(State, Node)),
+        grid_pools: std.array_list.Managed(grid_pool.GridPool(State, Node)),
 
         pub fn init(width: usize, height: usize, allocator: std.mem.Allocator) !Self {
-            var grid_pools = std.ArrayList(grid_pool.GridPool(State, Node)).init(allocator);
+            var grid_pools = std.array_list.Managed(grid_pool.GridPool(State, Node)).init(allocator);
 
             for (0..num_bins) |_| {
                 try grid_pools.append(try grid_pool.GridPool(State, Node).init(width, height, allocator));

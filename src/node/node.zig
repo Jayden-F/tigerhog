@@ -69,16 +69,15 @@ pub fn Node(comptime State: type) type {
             return self.priority;
         }
 
-        pub fn format(self: *const Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-            try writer.print(
-                "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {}",
+        pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+            return try writer.print(
+                "Node{{ .state = {any}, .g = {d}, .f = {d}, .parent = {any}, .priority = {} }}",
                 .{
-                    self.get_state().to_id(),
-                    if (self.parent) |parent| parent.get_state().to_id() else null,
-                    self.get_g(),
-                    self.get_h(),
-                    self.get_f(),
-                    self.get_state(),
+                    self.state,
+                    self.g,
+                    self.f,
+                    self.parent,
+                    self.priority,
                 },
             );
         }
@@ -110,9 +109,9 @@ test "show size" {
         0,
     );
 
-    std.debug.print("node: {}\n", .{node.*});
+    std.debug.print("node: {f}\n", .{node.*});
 
     node.set_g(42.0);
 
-    std.debug.print("node: {}\n", .{node.*});
+    std.debug.print("node: {f}\n", .{node.*});
 }

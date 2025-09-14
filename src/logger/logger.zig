@@ -7,7 +7,7 @@ pub fn Logger(comptime Node: type) type {
         writer: std.io.AnyWriter,
 
         fn log(self: *const Self, name: []const u8, node: *const Node) !void {
-            try self.writer.print("  - {{ type: \"{s}\", {} }}\n", .{ name, node });
+            try self.writer.print("  - {{ type: \"{s}\", {f} }}\n", .{ name, node });
         }
 
         pub fn init(writer: std.io.AnyWriter) Self {

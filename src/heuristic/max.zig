@@ -11,12 +11,12 @@ pub fn Max(comptime State: type) type {
     };
 
     return struct {
-        heuristics: std.ArrayList(Heuristic),
+        heuristics: std.array_list.Managed(Heuristic),
 
         const Self = @This();
 
         pub fn init(allocator: std.mem.Allocator) Self {
-            return .{ .heuristics = std.ArrayList(Heuristic).init(allocator) };
+            return .{ .heuristics = std.array_list.Managed(Heuristic).init(allocator) };
         }
 
         pub fn add(self: *Self, ptr: anytype) !void {

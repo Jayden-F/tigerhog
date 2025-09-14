@@ -1,63 +1,14 @@
 const std = @import("std");
 const tigerhog = @import("libtigerhog");
 
-pub fn compute_perfect_heuristic(allocator: std.mem.Allocator, domain: *tigerhog.domain.BitGrid(), target: tigerhog.state.State) !tigerhog.heuristic.Perfect.LookupHeuristic(tigerhog.state.SE2) {
+pub fn run_astar(allocator: std.mem.Allocator) !void {
+    const Domain = tigerhog.domain.BitGrid();
     const State = tigerhog.state.State;
     const Node = tigerhog.node.Node(State);
     const NodePool = tigerhog.node_pool.GridPool(State, Node);
-    const Expander = tigerhog.expander.CanonicalGridExpander(tigerhog.domain.BitGrid(), Node, NodePool);
     const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
-    const Heuristic = tigerhog.heuristic.Zero(State);
-    const Logger = tigerhog.heuristic.Perfect.CostLoggerT(Node);
-
-    const Search = tigerhog.search.UnidirectionalSearch(
-        State,
-        Node,
-        Expander,
-        Open,
-        Heuristic,
-        Logger,
-    );
-
-    var node_pool = try NodePool.init(domain.width, domain.height, allocator);
-    defer node_pool.deinit();
-    var expander = Expander.init(domain, &node_pool);
-    defer expander.deinit();
-    var open = try Open.init(allocator, domain.width * domain.height);
-    defer open.deinit();
-    var heuristic = Heuristic.init();
-    defer heuristic.deinit();
-    var logger = try Logger.init(domain.width, domain.height, allocator);
-    defer logger.deinit();
-
-    var perfect = Search.init(&expander, &open, &heuristic, &logger);
-    defer perfect.deinit();
-
-    try std.io.getStdOut().writer().print("Computing Heuristic\n", .{});
-    _ = try perfect.query(target, null);
-
-    const metrics = perfect.get_metrics();
-
-    try std.io.getStdOut().writer().print(
-        "{},\n",
-        .{std.json.fmt(
-            metrics.*,
-            .{},
-        )},
-    );
-
-    const result = tigerhog.heuristic.Perfect.LookupHeuristic(tigerhog.state.SE2).init(domain.width, domain.height, logger.get_table(), allocator);
-    return result;
-}
-
-pub fn run_astar(allocator: std.mem.Allocator) !void {
-    const Domain = tigerhog.domain.BitGrid();
-    const State = tigerhog.state.SE2;
-    const Node = tigerhog.node.Node(State);
-    const NodePool = tigerhog.node_pool.BinnedGridPool(State, Node);
-    const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
-    const Expander = tigerhog.expander.HybridExpander(Domain, Node, NodePool);
-    const Heuristic = tigerhog.heuristic.Max(State);
+    const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
+    const Heuristic = tigerhog.heuristic.Octile(State);
     const Logger = tigerhog.logger.NoopLogger(Node);
 
     const Search = tigerhog.search.UnidirectionalSearch(
@@ -69,7 +20,9 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
         Logger,
     );
 
-    const stdout = std.io.getStdOut().writer();
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
 
     const cwd = std.fs.cwd();
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
@@ -80,16 +33,17 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             try stdout.print("{s}\n", .{entry.name});
             // reading problem
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
-            var buffered_scen_file = std.io.bufferedReader(scen_file.reader());
-            var scenario = try tigerhog.scenario.load_gppc_scenarios(buffered_scen_file.reader(), allocator);
+            var reader_buffer: [1024]u8 = undefined;
+            var file_reader = scen_file.reader(&reader_buffer);
+            var scenario = try tigerhog.scenario.load_gppc_scenarios(&file_reader.interface, allocator);
             defer scenario.deinit();
             scen_file.close();
 
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
-            var buffered_map_file = std.io.bufferedReader(map_file.reader());
-
             // initialise search components
-            var domain = try Domain.load_map(allocator, buffered_map_file.reader());
+            var map_reader_buffer: [1024]u8 = undefined;
+            var map_file_reader = map_file.reader(&map_reader_buffer);
+            var domain = try Domain.load_map(&map_file_reader.interface, allocator);
             defer domain.deinit();
             map_file.close();
 
@@ -99,7 +53,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             defer expander.deinit();
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
-            var heuristic = tigerhog.heuristic.Max(State).init(allocator);
+            var heuristic = Heuristic.init();
             defer heuristic.deinit();
 
             // const search_trace = try cwd.createFile("search.trace.yaml", .{});
@@ -107,16 +61,6 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             defer logger.deinit();
 
             for (scenario.instances) |instance| {
-                var h_dubins = tigerhog.heuristic.Dubins(State).init(11.27);
-                defer h_dubins.deinit();
-                var h_perfect = try compute_perfect_heuristic(allocator, &domain, .{
-                    .x = instance.goal_x,
-                    .y = instance.goal_y,
-                });
-                defer h_perfect.deinit();
-
-                try heuristic.add(&h_dubins);
-                try heuristic.add(&h_perfect);
 
                 // assemble search algorithm
                 var search = Search.init(
@@ -129,21 +73,19 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                 // searching
                 _ = try search.query(
                     State{
-                        .x = @floatFromInt(instance.start_x),
-                        .y = @floatFromInt(instance.start_y),
-                        .theta = 0,
+                        .x = instance.start_x,
+                        .y = instance.start_y,
                     },
                     State{
-                        .x = @floatFromInt(instance.goal_x),
-                        .y = @floatFromInt(instance.goal_y),
-                        .theta = 0,
+                        .x = instance.goal_x,
+                        .y = instance.goal_y,
                     },
                 );
 
                 const metrics = search.get_metrics();
 
                 try stdout.print(
-                    "{},\n",
+                    "{f},\n",
                     .{std.json.fmt(
                         metrics.*,
                         .{},

@@ -13,7 +13,7 @@ pub const State = packed struct {
         return self.y;
     }
 
-    pub fn format(self: *const Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+    pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
         try writer.print("x: {d}, y: {d}", .{ self.get_x(), self.get_y() });
     }
 

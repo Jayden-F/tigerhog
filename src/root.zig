@@ -54,5 +54,5 @@ test "run astar" {
         state.State{ .x = size - 1, .y = size - 1 },
     );
     const metrics = &_search.metrics;
-    std.debug.print("{}\n", .{metrics});
+    std.debug.print("{f}\n", .{metrics});
 }

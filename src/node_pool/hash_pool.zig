@@ -10,9 +10,13 @@ pub fn HashPool(comptime State: type, comptime Node: type) type {
         pool: MemoryPool,
         map: Map,
 
-        pub fn init(allocator: std.mem.Allocator) !Self {
-            const map = Map.init(allocator);
-            const pool = MemoryPool.init(allocator);
+        pub fn init(width: usize, height: usize, allocator: std.mem.Allocator) !Self {
+            var map = Map.init(allocator);
+            const size: u32 = @intCast(width * height);
+
+            try map.ensureTotalCapacity(size);
+            const pool = try MemoryPool.initPreheated(allocator, size);
+
             return .{
                 .allocator = allocator,
                 .pool = pool,
@@ -33,8 +37,6 @@ pub fn HashPool(comptime State: type, comptime Node: type) type {
                 node.* = .{ .state = state };
                 result.value_ptr.* = node;
             }
-
-            std.debug.assert(std.meta.eql(result.value_ptr.*.get_state(), state));
 
             return result.value_ptr.*;
         }

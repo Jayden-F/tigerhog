@@ -69,22 +69,23 @@ pub fn Node(comptime State: type) type {
             return self.priority;
         }
 
-        pub inline fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
-            const node_string = try self.get_state().to_string(allocator);
-            defer allocator.free(node_string);
-
-            return try std.fmt.allocPrint(
-                allocator,
-                "id: {d}, pId: {?d}, g: {d}, h: {d}, f: {d}, {s}",
+        pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+            return try writer.print(
+                "Node{{ .state = {any}, .g = {d}, .f = {d}, .parent = {any}, .priority = {} }}",
                 .{
-                    @as(u64, @bitCast(self.get_state())),
-                    if (self.parent) |parent| @as(u64, @bitCast(parent.get_state())) else null,
-                    self.get_g(),
-                    self.get_h(),
-                    self.get_f(),
-                    node_string,
+                    self.state,
+                    self.g,
+                    self.f,
+                    self.parent,
+                    self.priority,
                 },
             );
+        }
+
+        pub fn lessThanFn(self: *const Self, other: *const Self) bool {
+            if (self.get_f() < other.get_f()) return true;
+            if (self.get_f() > other.get_f()) return false;
+            return self.get_g() > other.get_g();
         }
     };
 }
@@ -108,9 +109,9 @@ test "show size" {
         0,
     );
 
-    std.debug.print("node: {}\n", .{node.*});
+    std.debug.print("node: {f}\n", .{node.*});
 
     node.set_g(42.0);
 
-    std.debug.print("node: {}\n", .{node.*});
+    std.debug.print("node: {f}\n", .{node.*});
 }

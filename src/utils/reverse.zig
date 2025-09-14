@@ -1,4 +1,4 @@
-fn reverse(arr: anytype) void {
+pub fn reverse(arr: anytype) void {
     const len = arr.len;
 
     var i: usize = 0;

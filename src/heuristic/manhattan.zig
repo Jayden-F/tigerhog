@@ -10,9 +10,9 @@ pub fn Manhattan(comptime State: type) type {
 
         pub fn deinit(_: *Self) void {}
 
-        pub inline fn compute(_: *Self, current: State, target: State) f64 {
-            const x_diff = @abs(current.get_x() - target.get_x());
-            const y_diff = @abs(current.get_y() - target.get_y());
+        pub inline fn compute(_: *Self, current: State, target: ?State) f64 {
+            const x_diff = @abs(current.get_x() - target.?.get_x());
+            const y_diff = @abs(current.get_y() - target.?.get_y());
             return @floatFromInt(x_diff + y_diff);
         }
     };

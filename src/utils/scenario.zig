@@ -19,16 +19,15 @@ const Scenario = struct {
     }
 };
 
-pub fn load_gppc_scenarios(stream: anytype, allocator: std.mem.Allocator) !Scenario {
-    var buf: [256]u8 = undefined;
+pub fn load_gppc_scenarios(reader: *std.Io.Reader, allocator: std.mem.Allocator) !Scenario {
     var map_name: []const u8 = undefined;
 
     // remove header
-    _ = try stream.readUntilDelimiter(&buf, '\n');
+    _ = try reader.takeDelimiterExclusive('\n');
 
-    var instances = std.ArrayList(Instance).init(allocator);
+    var instances = std.array_list.Managed(Instance).init(allocator);
 
-    while (try stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+    while (reader.takeDelimiterExclusive('\n')) |line| {
         var tokens = std.mem.tokenizeAny(u8, line, " \t");
 
         _ = tokens.next().?;
@@ -46,10 +45,11 @@ pub fn load_gppc_scenarios(stream: anytype, allocator: std.mem.Allocator) !Scena
             .lb = try std.fmt.parseFloat(f64, tokens.next().?),
         };
         try instances.append(instance);
+    } else |_| {
+        return Scenario{
+            .instances = try instances.toOwnedSlice(),
+            .map_name = try allocator.dupe(u8, map_name),
+            .allocator = allocator,
+        };
     }
-    return Scenario{
-        .instances = try instances.toOwnedSlice(),
-        .map_name = try allocator.dupe(u8, map_name),
-        .allocator = allocator,
-    };
 }

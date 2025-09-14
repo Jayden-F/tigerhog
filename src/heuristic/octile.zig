@@ -9,9 +9,9 @@ pub fn Octile(comptime State: type) type {
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn compute(_: *Self, current: State, target: State) f64 {
-            const dx: f64 = @floatFromInt(@abs(current.get_x() - target.get_x()));
-            const dy: f64 = @floatFromInt(@abs(current.get_y() - target.get_y()));
+        pub fn compute(_: *Self, current: State, target: ?State) f64 {
+            const dx: f64 = @floatFromInt(@abs(current.get_x() - target.?.get_x()));
+            const dy: f64 = @floatFromInt(@abs(current.get_y() - target.?.get_y()));
 
             const diagonals = @min(dx, dy);
             const orthoginals = @max(dx, dy) - diagonals;

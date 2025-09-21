@@ -22,7 +22,6 @@ pub fn BitGrid() type {
         }
 
         pub fn load_map(reader: *std.Io.Reader, allocator: std.mem.Allocator) !Self {
-
             _ = try reader.takeDelimiterExclusive('\n');
             const height_line = try reader.takeDelimiterExclusive('\n');
             const height = try std.fmt.parseInt(usize, height_line[7..], 10);
@@ -59,7 +58,7 @@ pub fn BitGrid() type {
             const padded_y: u32 = @intCast(y + 1);
             const padded_x: u32 = @intCast(x + 1);
 
-            const bit = padded_x % 8;
+            const bit = padded_x & 7;
             const byte = (padded_x / 8 + padded_y * self.padded_width_bytes) + 8;
             return byte * 8 + bit;
         }

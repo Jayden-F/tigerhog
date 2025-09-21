@@ -1,36 +1,41 @@
 const std = @import("std");
 const tigerhog = @import("libtigerhog");
 
+const State = tigerhog.state.State;
+const Node = tigerhog.node.Node(State);
+const NodePool = tigerhog.node_pool.GridPool(State, Node);
+const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
+const Domain = tigerhog.domain.BitGrid();
+const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
+const Heuristic = tigerhog.heuristic.Octile(State);
+const Logger = tigerhog.logger.NoopLogger(Node);
+
+const Search = tigerhog.search.UnidirectionalSearch(
+    State,
+    Node,
+    Expander,
+    Open,
+    Heuristic,
+    Logger,
+);
+
 pub fn run_astar(allocator: std.mem.Allocator) !void {
-    const Domain = tigerhog.domain.BitGrid();
-    const State = tigerhog.state.State;
-    const Node = tigerhog.node.Node(State);
-    const NodePool = tigerhog.node_pool.GridPool(State, Node);
-    const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
-    const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
-    const Heuristic = tigerhog.heuristic.Octile(State);
-    const Logger = tigerhog.logger.NoopLogger(Node);
-
-    const Search = tigerhog.search.UnidirectionalSearch(
-        State,
-        Node,
-        Expander,
-        Open,
-        Heuristic,
-        Logger,
-    );
-
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
-
     const cwd = std.fs.cwd();
+
+    var log_buffer: [1024]u8 = undefined;
+
+    // var log_file = try cwd.createFile("log.txt", .{});
+    // var log_writer = log_file.writer(&log_buffer);
+
+    var log_writer = std.fs.File.stdout().writer(&log_buffer);
+    const log = &log_writer.interface;
+
     const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
     var it = maps.iterate();
 
     while (try it.next()) |entry| {
         if (std.mem.eql(u8, entry.name[(entry.name.len - 5)..], ".scen")) {
-            try stdout.print("{s}\n", .{entry.name});
+            try log.print("{s}\n", .{entry.name});
             // reading problem
             const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
             var reader_buffer: [1024]u8 = undefined;
@@ -41,7 +46,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
             const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
             // initialise search components
-            var map_reader_buffer: [1024]u8 = undefined;
+            var map_reader_buffer: [5120]u8 = undefined;
             var map_file_reader = map_file.reader(&map_reader_buffer);
             var domain = try Domain.load_map(&map_file_reader.interface, allocator);
             defer domain.deinit();
@@ -56,9 +61,13 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
 
-            // const search_trace = try cwd.createFile("search.trace.yaml", .{});
+            // var search_trace_buffer: [1024]u8 = undefined;
+            // var search_trace = try cwd.createFile("search.trace.yaml", .{});
+            // var search_trace_writer = search_trace.writer(&search_trace_buffer);
+            // var logger = Logger.init(&search_trace_writer.interface);
             var logger = Logger.init();
             defer logger.deinit();
+            // defer search_trace.close();
 
             for (scenario.instances) |instance| {
 
@@ -84,7 +93,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
                 const metrics = search.get_metrics();
 
-                try stdout.print(
+                try log.print(
                     "{f},\n",
                     .{std.json.fmt(
                         metrics.*,

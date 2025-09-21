@@ -1,4 +1,5 @@
 const std = @import("std");
+const states = @import("../state/mod.zig");
 
 pub fn Node(comptime State: type) type {
     return struct {
@@ -19,10 +20,6 @@ pub fn Node(comptime State: type) type {
                 .parent = parent,
                 .priority = priority,
             };
-        }
-
-        pub fn default() Self {
-            return .{};
         }
 
         pub inline fn set_state(self: *Self, state: State) void {
@@ -71,12 +68,13 @@ pub fn Node(comptime State: type) type {
 
         pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
             return try writer.print(
-                "Node{{ .state = {any}, .g = {d}, .f = {d}, .parent = {any}, .priority = {} }}",
+                "id: {}, {f}, g: {d}, f: {d}, parent: {?}, priority: {d}",
                 .{
+                    self.state.to_id(),
                     self.state,
                     self.g,
                     self.f,
-                    self.parent,
+                    if (self.parent) |p| p.state.to_id() else null,
                     self.priority,
                 },
             );
@@ -93,21 +91,17 @@ pub fn Node(comptime State: type) type {
 test "show size" {
     const allocator = std.testing.allocator;
 
-    const Node_u64 = Node(u64);
-    const size = @sizeOf(Node_u64);
+    const NodeType = Node(states.State);
+
+    const size = @sizeOf(NodeType);
     std.debug.print("\nsize: {}\n", .{size});
 
     try std.testing.expectEqual(40, size);
 
-    const node: *Node_u64 = try allocator.create(Node_u64);
+    const node: *NodeType = try allocator.create(NodeType);
     defer allocator.destroy(node);
-    node.* = Node_u64.init(
-        0,
-        0.0,
-        0.0,
-        null,
-        0,
-    );
+
+    node.* = .{ .state = .{ .x = 0, .y = 0 } };
 
     std.debug.print("node: {f}\n", .{node.*});
 

@@ -4,18 +4,18 @@ pub fn Logger(comptime Node: type) type {
     return struct {
         const Self = @This();
 
-        writer: std.io.AnyWriter,
+        writer: *std.io.Writer,
 
-        fn log(self: *const Self, name: []const u8, node: *const Node) !void {
+        fn log(self: *Self, name: []const u8, node: *const Node) !void {
             try self.writer.print("  - {{ type: \"{s}\", {f} }}\n", .{ name, node });
         }
 
-        pub fn init(writer: std.io.AnyWriter) Self {
+        pub fn init(writer: *std.io.Writer) Self {
             return .{ .writer = writer };
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn initialise(self: *const Self, start: *const Node, goal: ?*const Node) !void {
+        pub fn initialise(self: *Self, start: *const Node, goal: ?*const Node) !void {
             const header =
                 \\version: 1.4.0
                 \\views:
@@ -39,13 +39,13 @@ pub fn Logger(comptime Node: type) type {
             try self.log("destination", goal.?);
         }
 
-        pub fn expand(self: *const Self, node: *const Node) !void {
+        pub fn expand(self: *Self, node: *const Node) !void {
             try self.log("expanding", node);
         }
-        pub fn generate(self: *const Self, node: *const Node) !void {
+        pub fn generate(self: *Self, node: *const Node) !void {
             try self.log("generating", node);
         }
-        pub fn close(self: *const Self, node: *const Node) !void {
+        pub fn close(self: *Self, node: *const Node) !void {
             try self.log("closing", node);
         }
     };

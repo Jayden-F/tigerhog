@@ -2,8 +2,8 @@ const std = @import("std");
 
 pub const State = packed struct {
     const Self = @This();
-    x: i32,
-    y: i32,
+    x: i32 = 0,
+    y: i32 = 0,
 
     pub inline fn get_x(self: *const Self) i32 {
         return self.x;

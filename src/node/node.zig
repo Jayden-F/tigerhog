@@ -6,7 +6,7 @@ pub fn Node(comptime State: type) type {
         const Self = @This();
         pub const State_T = State;
 
-        state: State,
+        state: State = .{},
         g: f64 = std.math.inf(f64),
         f: f64 = std.math.inf(f64),
         parent: ?*Self = null,
@@ -100,8 +100,7 @@ test "show size" {
 
     const node: *NodeType = try allocator.create(NodeType);
     defer allocator.destroy(node);
-
-    node.* = .{ .state = .{ .x = 0, .y = 0 } };
+    node.* = .{};
 
     std.debug.print("node: {f}\n", .{node.*});
 

@@ -1,9 +1,9 @@
 const std = @import("std");
 
 const Self = @This();
-x: f64,
-y: f64,
-theta: f64,
+x: f64 = 0,
+y: f64 = 0,
+theta: f64 = 0,
 
 pub inline fn get_x(self: *const Self) f64 {
     return self.x;

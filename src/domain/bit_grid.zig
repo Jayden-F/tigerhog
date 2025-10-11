@@ -45,6 +45,7 @@ pub fn BitGrid() type {
         }
 
         pub inline fn is_valid(self: *const Self, x: i32, y: i32) bool {
+            @setRuntimeSafety(false);
             const i = self.index(x, y);
             return self.data.isSet(i);
         }
@@ -55,6 +56,7 @@ pub fn BitGrid() type {
         }
 
         inline fn index(self: *const Self, x: i32, y: i32) usize {
+            @setRuntimeSafety(false);
             const padded_y: u32 = @intCast(y + 1);
             const padded_x: u32 = @intCast(x + 1);
 

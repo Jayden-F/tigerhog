@@ -141,6 +141,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         pub fn grow(self: *Self, new_capacity: usize) !void {
+            @setRuntimeSafety(false);
             if (new_capacity <= self.capacity) {
                 return;
             }
@@ -162,6 +163,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn sift_up(self: *Self, index: usize) void {
+            @setRuntimeSafety(false);
             self.heap_ops += 1;
             var current = index;
             while (current > 0) {
@@ -176,6 +178,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn sift_down(self: *Self, index: usize) void {
+            @setRuntimeSafety(false);
             self.heap_ops += 1;
             var current = index;
             const first_leaf_index: usize = self.len >> 1;
@@ -198,6 +201,7 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         }
 
         inline fn swap(self: *Self, a: usize, b: usize) void {
+            @setRuntimeSafety(false);
             const temp = self.elements[b];
             self.elements[b] = self.elements[a];
             self.elements[a] = temp;

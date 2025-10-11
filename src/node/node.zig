@@ -12,16 +12,6 @@ pub fn Node(comptime State: type) type {
         parent: ?*Self = null,
         priority: usize = std.math.maxInt(usize),
 
-        pub fn init(state: State, g: f64, f: f64, parent: ?*Self, priority: u64) Self {
-            return .{
-                .state = state,
-                .g = g,
-                .f = f,
-                .parent = parent,
-                .priority = priority,
-            };
-        }
-
         pub inline fn set_state(self: *Self, state: State) void {
             self.state = state;
         }
@@ -89,12 +79,13 @@ pub fn Node(comptime State: type) type {
 }
 
 test "show size" {
-    const allocator = std.testing.allocator;
+    std.debug.print("\n", .{});
 
+    const allocator = std.testing.allocator;
     const NodeType = Node(states.State);
 
     const size = @sizeOf(NodeType);
-    std.debug.print("\nsize: {}\n", .{size});
+    std.debug.print("size: {}\n", .{size});
 
     try std.testing.expectEqual(40, size);
 

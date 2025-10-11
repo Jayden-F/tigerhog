@@ -30,7 +30,7 @@ pub fn UnidirectionalSearch(
                 .open = open,
                 .heuristic = heuristic,
                 .logger = logger,
-                .metrics = metrics.Metrics{},
+                .metrics = .{},
             };
         }
 
@@ -92,6 +92,7 @@ pub fn UnidirectionalSearch(
 
                 for (try self.expander.expand(current)) |*edge| {
                     const successor: *Node = edge.node;
+                    @prefetch(successor, .{});
 
                     const g: f64 = current.get_g() + edge.cost;
                     const f: f64 = g + self.heuristic.compute(edge.state, target_state);

@@ -58,6 +58,7 @@ pub fn GridPool(comptime State: type, comptime Node: type) type {
         }
 
         pub inline fn generate(self: *Self, state: State) !*Node {
+            @setRuntimeSafety(false);
             const index = self.get_index(state);
             const search_node = &self.map[index];
 

@@ -2,3 +2,4 @@ pub const GridExpander4Connected = @import("grid_expander.zig").GridExpander4Con
 pub const GridExpander8Connected = @import("grid_expander_8.zig").GridExpander8Connected;
 pub const HybridExpander = @import("hybrid_expander.zig").HybridExpander;
 pub const CanonicalGridExpander = @import("canonical_grid_expander.zig").CanonicalGridExpander;
+pub const JpsExpander = @import("jps_expander.zig").JpsExpander;

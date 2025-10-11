@@ -6,7 +6,7 @@ const Node = tigerhog.node.Node(State);
 const NodePool = tigerhog.node_pool.GridPool(State, Node);
 const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
 const Domain = tigerhog.domain.BitGrid();
-const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
+const Expander = tigerhog.expander.JpsExpander(Domain, Node, NodePool);
 const Heuristic = tigerhog.heuristic.Octile(State);
 const Logger = tigerhog.logger.NoopLogger(Node);
 
@@ -22,7 +22,7 @@ const Search = tigerhog.search.UnidirectionalSearch(
 pub fn run_astar(allocator: std.mem.Allocator) !void {
     const cwd = std.fs.cwd();
 
-    var log_buffer: [1024]u8 = undefined;
+    var log_buffer: [2048]u8 = undefined;
 
     // var log_file = try cwd.createFile("log.txt", .{});
     // var log_writer = log_file.writer(&log_buffer);
@@ -54,15 +54,14 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
             var node_pool = try NodePool.init(domain.width, domain.height, allocator);
             defer node_pool.deinit();
-            var expander = Expander.init(&domain, &node_pool);
-            defer expander.deinit();
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
 
-            // var search_trace_buffer: [1024]u8 = undefined;
+            // var search_trace_buffer: [5120]u8 = undefined;
             // var search_trace = try cwd.createFile("search.trace.yaml", .{});
+            // defer search_trace.close();
             // var search_trace_writer = search_trace.writer(&search_trace_buffer);
             // var logger = Logger.init(&search_trace_writer.interface);
             var logger = Logger.init();
@@ -70,7 +69,15 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             // defer search_trace.close();
 
             for (scenario.instances) |instance| {
-
+                var expander = Expander.init(
+                    &domain,
+                    &node_pool,
+                    State{
+                        .x = instance.goal_x,
+                        .y = instance.goal_y,
+                    },
+                );
+                defer expander.deinit();
                 // assemble search algorithm
                 var search = Search.init(
                     &expander,
@@ -92,14 +99,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                 );
 
                 const metrics = search.get_metrics();
-
-                try log.print(
-                    "{f},\n",
-                    .{std.json.fmt(
-                        metrics.*,
-                        .{},
-                    )},
-                );
+                try log.print("{f},\n", .{metrics});
 
                 // if (target) |reached| {
                 //     const path = try search.solution(reached, allocator);
@@ -111,6 +111,8 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
             }
         }
     }
+
+    try log.flush();
 }
 
 pub fn main() !void {

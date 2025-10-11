@@ -1,5 +1,6 @@
 const std = @import("std");
 const states = @import("../state/mod.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn Node(comptime State: type) type {
     return struct {
@@ -7,8 +8,8 @@ pub fn Node(comptime State: type) type {
         pub const State_T = State;
 
         state: State = .{},
-        g: f64 = std.math.inf(f64),
-        f: f64 = std.math.inf(f64),
+        g: Cost = std.math.inf(Cost),
+        f: Cost = std.math.inf(Cost),
         parent: ?*Self = null,
         priority: usize = std.math.maxInt(usize),
 
@@ -20,23 +21,23 @@ pub fn Node(comptime State: type) type {
             return self.state;
         }
 
-        pub inline fn set_g(self: *Self, g: f64) void {
+        pub inline fn set_g(self: *Self, g: Cost) void {
             self.g = g;
         }
 
-        pub inline fn get_g(self: *const Self) f64 {
+        pub inline fn get_g(self: *const Self) Cost {
             return self.g;
         }
 
-        pub inline fn get_h(self: *const Self) f64 {
+        pub inline fn get_h(self: *const Self) Cost {
             return self.f - self.g;
         }
 
-        pub inline fn set_f(self: *Self, f: f64) void {
+        pub inline fn set_f(self: *Self, f: Cost) void {
             self.f = f;
         }
 
-        pub inline fn get_f(self: *const Self) f64 {
+        pub inline fn get_f(self: *const Self) Cost {
             return self.f;
         }
 

@@ -1,11 +1,11 @@
 const std = @import("std");
+const Cost = @import("../utils/cost.zig").Cost;
 
 const ZeroT = @import("zero.zig").Zero;
 
 pub fn LookupHeuristic(comptime State: type) type {
     return struct {
         const Self = @This();
-        const Cost = f64;
 
         width: usize,
         height: usize,
@@ -40,7 +40,7 @@ pub fn LookupHeuristic(comptime State: type) type {
             self.allocator.free(self.table);
         }
 
-        pub fn compute(self: *Self, current: State, _: ?State) Cost {
+        pub fn compute(self: *const Self, current: State, _: ?State) Cost {
             const index: usize = self.get_index(current);
             return self.table[index];
         }
@@ -50,7 +50,6 @@ pub fn LookupHeuristic(comptime State: type) type {
 pub fn CostLoggerT(comptime Node: type) type {
     return struct {
         const Self = @This();
-        const Cost = f64;
 
         width: usize,
         height: usize,

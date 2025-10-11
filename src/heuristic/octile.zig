@@ -1,4 +1,5 @@
 const std = @import("std");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn Octile(comptime State: type) type {
     return struct {
@@ -9,7 +10,7 @@ pub fn Octile(comptime State: type) type {
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn compute(_: *const Self, current: State, target: ?State) f64 {
+        pub fn compute(_: *const Self, current: State, target: ?State) Cost {
             const dx: f64 = @floatFromInt(@abs(current.get_x() - target.?.get_x()));
             const dy: f64 = @floatFromInt(@abs(current.get_y() - target.?.get_y()));
 

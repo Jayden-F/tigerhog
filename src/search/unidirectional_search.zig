@@ -1,6 +1,7 @@
 const std = @import("std");
 const reverse = @import("../utils/reverse.zig");
 const metrics = @import("../utils/metrics.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn UnidirectionalSearch(
     comptime State: type,
@@ -92,10 +93,9 @@ pub fn UnidirectionalSearch(
 
                 for (try self.expander.expand(current)) |*edge| {
                     const successor: *Node = edge.node;
-                    @prefetch(successor, .{});
 
-                    const g: f64 = current.get_g() + edge.cost;
-                    const f: f64 = g + self.heuristic.compute(edge.state, target_state);
+                    const g: Cost = current.get_g() + edge.cost;
+                    const f: Cost = g + self.heuristic.compute(edge.state, target_state);
 
                     if (g < successor.get_g()) {
                         successor.set_state(edge.state);

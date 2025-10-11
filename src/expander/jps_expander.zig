@@ -1,6 +1,8 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
 const heuristic = @import("../heuristic/mod.zig");
+const canonical_successors = @import("canonical_successors.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn JpsExpander(
     comptime Domain: type,
@@ -10,7 +12,7 @@ pub fn JpsExpander(
     const Edge = struct {
         state: Node.State_T,
         node: *Node,
-        cost: f64,
+        cost: Cost,
     };
 
     return struct {
@@ -43,12 +45,17 @@ pub fn JpsExpander(
 
             std.debug.assert(self.domain.is_valid(x, y));
 
-            // Identify successors: jump in all 8 directions
-            const directions = [_]direction.Direction{ .NORTH, .EAST, .SOUTH, .WEST, .NORTH_EAST, .SOUTH_EAST, .SOUTH_WEST, .NORTH_WEST };
-            inline for (directions) |dir| {
-                if (self.jump(current_state, dir)) |jump_state| {
-                    const cost = heuristic.Octile(Node.State_T).init().compute(current_state, jump_state);
-                    try self.add_neighbour(jump_state, cost);
+            const neighbours = canonical_successors.get_neighbours(Domain, self.domain, x, y);
+            const reached_dir: ?direction.Direction = if (current.get_parent()) |parent| canonical_successors.get_reached_direction(Node, parent, current) else null;
+            const successors = canonical_successors.get_successors(neighbours, reached_dir);
+
+            const all_dirs = [_]direction.Direction{ .NORTH, .EAST, .SOUTH, .WEST, .NORTH_EAST, .SOUTH_EAST, .SOUTH_WEST, .NORTH_WEST };
+            inline for (all_dirs) |dir| {
+                if (successors.contains(dir)) {
+                    if (self.jump(current_state, dir)) |jump_state| {
+                        const cost = heuristic.Octile(Node.State_T).init().compute(current_state, jump_state);
+                        try self.add_neighbour(jump_state, cost);
+                    }
                 }
             }
 
@@ -108,26 +115,22 @@ pub fn JpsExpander(
 
         fn has_forced(self: *Self, x: i32, y: i32, dir: direction.Direction) bool {
             return switch (dir) {
-                .NORTH => (!self.domain.is_valid(x - 1, y) and self.domain.is_valid(x - 1, y - 1)) or
-                    (!self.domain.is_valid(x + 1, y) and self.domain.is_valid(x + 1, y - 1)),
-                .NORTH_EAST => (!self.domain.is_valid(x - 1, y) and self.domain.is_valid(x - 1, y - 1)) or
-                    (!self.domain.is_valid(x, y - 1) and self.domain.is_valid(x + 1, y - 1)),
-                .EAST => (!self.domain.is_valid(x, y - 1) and self.domain.is_valid(x + 1, y - 1)) or
-                    (!self.domain.is_valid(x, y + 1) and self.domain.is_valid(x + 1, y + 1)),
-                .SOUTH_EAST => (!self.domain.is_valid(x - 1, y) and self.domain.is_valid(x - 1, y + 1)) or
-                    (!self.domain.is_valid(x, y + 1) and self.domain.is_valid(x + 1, y + 1)),
-                .SOUTH => (!self.domain.is_valid(x - 1, y) and self.domain.is_valid(x - 1, y + 1)) or
-                    (!self.domain.is_valid(x + 1, y) and self.domain.is_valid(x + 1, y + 1)),
-                .SOUTH_WEST => (!self.domain.is_valid(x + 1, y) and self.domain.is_valid(x + 1, y + 1)) or
-                    (!self.domain.is_valid(x, y + 1) and self.domain.is_valid(x - 1, y + 1)),
-                .WEST => (!self.domain.is_valid(x, y - 1) and self.domain.is_valid(x - 1, y - 1)) or
-                    (!self.domain.is_valid(x, y + 1) and self.domain.is_valid(x - 1, y + 1)),
-                .NORTH_WEST => (!self.domain.is_valid(x + 1, y) and self.domain.is_valid(x + 1, y - 1)) or
-                    (!self.domain.is_valid(x, y - 1) and self.domain.is_valid(x - 1, y - 1)),
+                .NORTH => (!self.domain.is_valid(x - 1, y + 1) and self.domain.is_valid(x - 1, y)) or
+                    (!self.domain.is_valid(x + 1, y + 1) and self.domain.is_valid(x + 1, y)),
+                .NORTH_EAST => false,
+                .EAST => (!self.domain.is_valid(x - 1, y - 1) and self.domain.is_valid(x, y - 1)) or
+                    (!self.domain.is_valid(x - 1, y + 1) and self.domain.is_valid(x, y + 1)),
+                .SOUTH_EAST => false,
+                .SOUTH => (!self.domain.is_valid(x - 1, y - 1) and self.domain.is_valid(x - 1, y)) or
+                    (!self.domain.is_valid(x + 1, y - 1) and self.domain.is_valid(x + 1, y)),
+                .SOUTH_WEST => false,
+                .WEST => (!self.domain.is_valid(x + 1, y - 1) and self.domain.is_valid(x, y - 1)) or
+                    (!self.domain.is_valid(x + 1, y + 1) and self.domain.is_valid(x, y + 1)),
+                .NORTH_WEST => false,
             };
         }
 
-        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
+        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: Cost) !void {
             const node: *Node = try self.generate(state);
             self.edges[self.num_neighbours] = .{ .state = state, .node = node, .cost = cost };
             self.num_neighbours += 1;

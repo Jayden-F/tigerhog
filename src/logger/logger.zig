@@ -13,6 +13,11 @@ pub fn Logger(comptime Node: type) type {
         pub fn init(writer: *std.io.Writer) Self {
             return .{ .writer = writer };
         }
+
+        pub fn flush(self: *Self) !void {
+            try self.writer.flush();
+        }
+
         pub fn deinit(_: *Self) void {}
 
         pub fn initialise(self: *Self, start: *const Node, goal: ?*const Node) !void {

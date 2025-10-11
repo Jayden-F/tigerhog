@@ -1,4 +1,5 @@
 const std = @import("std");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn Zero(comptime State: type) type {
     return struct {
@@ -9,7 +10,7 @@ pub fn Zero(comptime State: type) type {
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn compute(_: *Self, _: State, _: ?State) f64 {
+        pub fn compute(_: *const Self, _: State, _: ?State) Cost {
             return 0;
         }
     };

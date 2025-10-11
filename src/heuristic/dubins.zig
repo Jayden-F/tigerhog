@@ -1,5 +1,6 @@
 const std = @import("std");
 const angles = @import("../utils/angles.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn Dubins(comptime State: type) type {
     return struct {
@@ -14,7 +15,7 @@ pub fn Dubins(comptime State: type) type {
         }
         pub fn deinit(_: *Self) void {}
 
-        pub fn compute(self: *Self, current: State, target: ?State) f64 {
+        pub fn compute(self: *Self, current: State, target: ?State) Cost {
             const x = current.get_x() - target.?.get_x();
             const y = current.get_y() - target.?.get_y();
             const theta = angles.wrap(f64, current.get_theta() - target.?.get_theta(), -std.math.pi, std.math.pi);

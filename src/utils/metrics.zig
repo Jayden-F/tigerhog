@@ -1,4 +1,5 @@
 const std = @import("std");
+const Cost = @import("cost.zig").Cost;
 
 pub const Metrics = struct {
     const Self = @This();
@@ -6,7 +7,7 @@ pub const Metrics = struct {
     nodes_expanded: usize = 0,
     nodes_generated: usize = 0,
     nodes_surplus: usize = 0,
-    solution_cost: f64 = std.math.inf(f64),
+    solution_cost: Cost = std.math.inf(Cost),
     heap_ops: usize = 0,
     elapsed_time_nanos: i128 = 0,
 

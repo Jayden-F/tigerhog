@@ -1,5 +1,6 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn GridExpander4Connected(
     comptime Domain: type,
@@ -12,12 +13,12 @@ pub fn GridExpander4Connected(
     const Edge = struct {
         state: Node.State_T,
         node: *Node,
-        cost: f64,
+        cost: Cost,
     };
 
     return struct {
         const Self = @This();
-        const offsets = [_]struct { dx: i32, dy: i32, dir: direction.Direction, cost: f64 }{
+        const offsets = [_]struct { dx: i32, dy: i32, dir: direction.Direction, cost: Cost }{
             .{ .dx = 0, .dy = -1, .dir = .NORTH, .cost = 1.0 },
             .{ .dx = 1, .dy = 0, .dir = .EAST, .cost = 1.0 },
             .{ .dx = 0, .dy = 1, .dir = .SOUTH, .cost = 1.0 },
@@ -72,7 +73,7 @@ pub fn GridExpander4Connected(
             return self.edges[0..self.num_neighbours];
         }
 
-        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
+        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: Cost) !void {
             @setRuntimeSafety(false);
             const node: *Node = try self.generate(state);
             self.edges[self.num_neighbours] = .{ .state = state, .node = node, .cost = cost };

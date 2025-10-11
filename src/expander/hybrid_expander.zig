@@ -1,6 +1,7 @@
 const std = @import("std");
 const direction = @import("../utils/direction.zig");
 const angles = @import("../utils/angles.zig");
+const Cost = @import("../utils/cost.zig").Cost;
 
 pub fn HybridExpander(
     comptime Domain: type,
@@ -10,7 +11,7 @@ pub fn HybridExpander(
     const Edge = struct {
         state: Node.State_T,
         node: *Node,
-        cost: f64,
+        cost: Cost,
     };
 
     return struct {
@@ -134,7 +135,7 @@ pub fn HybridExpander(
             return self.edges[0..self.num_neighbours];
         }
 
-        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: f64) !void {
+        inline fn add_neighbour(self: *Self, state: Node.State_T, cost: Cost) !void {
             const node: *Node = try self.generate(state);
             self.edges[self.num_neighbours] = .{ .state = state, .node = node, .cost = cost };
             self.num_neighbours += 1;

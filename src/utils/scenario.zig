@@ -1,11 +1,12 @@
 const std = @import("std");
+const Cost = @import("cost.zig").Cost;
 
 const Instance = struct {
     start_x: i32,
     start_y: i32,
     goal_x: i32,
     goal_y: i32,
-    lb: f64,
+    lb: Cost,
 };
 
 const Scenario = struct {
@@ -42,7 +43,7 @@ pub fn load_gppc_scenarios(reader: *std.Io.Reader, allocator: std.mem.Allocator)
             .start_y = try std.fmt.parseInt(i32, tokens.next().?, 10),
             .goal_x = try std.fmt.parseInt(i32, tokens.next().?, 10),
             .goal_y = try std.fmt.parseInt(i32, tokens.next().?, 10),
-            .lb = try std.fmt.parseFloat(f64, tokens.next().?),
+            .lb = try std.fmt.parseFloat(Cost, tokens.next().?),
         };
         try instances.append(instance);
     } else |_| {

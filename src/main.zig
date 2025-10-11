@@ -54,19 +54,22 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
 
             var node_pool = try NodePool.init(domain.width, domain.height, allocator);
             defer node_pool.deinit();
+            // var expander = Expander.init(&domain, &node_pool);
+            // defer expander.deinit();
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
 
-            // var search_trace_buffer: [5120]u8 = undefined;
             // var search_trace = try cwd.createFile("search.trace.yaml", .{});
             // defer search_trace.close();
+            //
+            // var search_trace_buffer: [1024]u8 = undefined;
             // var search_trace_writer = search_trace.writer(&search_trace_buffer);
             // var logger = Logger.init(&search_trace_writer.interface);
+            //
             var logger = Logger.init();
             defer logger.deinit();
-            // defer search_trace.close();
 
             for (scenario.instances) |instance| {
                 var expander = Expander.init(
@@ -78,6 +81,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     },
                 );
                 defer expander.deinit();
+
                 // assemble search algorithm
                 var search = Search.init(
                     &expander,
@@ -98,8 +102,8 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     },
                 );
 
-                const metrics = search.get_metrics();
-                try log.print("{f},\n", .{metrics});
+                // const metrics = search.get_metrics();
+                // try log.print("{f},\n", .{metrics});
 
                 // if (target) |reached| {
                 //     const path = try search.solution(reached, allocator);
@@ -107,11 +111,13 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                 //     try path_logger.log_path(path);
                 // }
 
+                // std.debug.assert(std.math.approxEqAbs(f64, metrics.solution_cost, instance.lb, 1e-6));
+
                 search.reset();
+                // try logger.flush();
             }
         }
     }
-
     try log.flush();
 }
 

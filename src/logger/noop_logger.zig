@@ -8,6 +8,7 @@ pub fn NoopLogger(comptime Node: type) type {
             return .{};
         }
         pub fn deinit(_: *Self) void {}
+        pub fn flush(_: *Self) !void {}
 
         pub fn initialise(_: *const Self, _: *const Node, _: ?*const Node) !void {}
         pub fn expand(_: *const Self, _: *const Node) !void {}

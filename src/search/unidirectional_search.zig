@@ -1,5 +1,4 @@
 const std = @import("std");
-const reverse = @import("../utils/reverse.zig");
 const metrics = @import("../utils/metrics.zig");
 const Cost = @import("../utils/cost.zig").Cost;
 
@@ -22,18 +21,18 @@ pub fn UnidirectionalSearch(
         metrics: metrics.Metrics,
 
         pub fn init(
+            io: std.Io,
             expander: *Expander,
             open: *Open,
             heuristic: *Heuristic,
             logger: *Logger,
-            io: std.Io,
         ) Self {
             return .{
+                .io = io,
                 .expander = expander,
                 .open = open,
                 .heuristic = heuristic,
                 .logger = logger,
-                .io = io,
                 .metrics = .{},
             };
         }
@@ -73,7 +72,7 @@ pub fn UnidirectionalSearch(
             }
 
             const result = try array.toOwnedSlice();
-            reverse.reverse(result);
+            std.mem.reverse(result);
             return result;
         }
 

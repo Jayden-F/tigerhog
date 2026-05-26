@@ -22,6 +22,9 @@ test "run astar" {
     const Logger = logger.NoopLogger(Node);
     const Search = search.UnidirectionalSearch(state.State, Node, Expander, Open, Heuristic, Logger);
 
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+
     const allocator = std.testing.allocator;
     const size = 10_000;
     var _domain = try Domain.init(allocator, size, size);
@@ -49,6 +52,7 @@ test "run astar" {
     var _logger = Logger.init();
 
     var _search = Search.init(
+        io,
         &_expander,
         &_open,
         &_heuristic,

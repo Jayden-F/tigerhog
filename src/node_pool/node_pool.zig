@@ -20,6 +20,7 @@ pub fn NodePool(comptime Mapper: type, comptime Node: type, comptime State: type
 
         pub fn reset(self: *Self) void {
             self.mapper.reset();
+            _ = self.allocator.reset(.retain_capacity);
         }
 
         pub fn getOrCreate(self: *Self, state: State) !*Node {

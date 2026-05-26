@@ -4,7 +4,7 @@ pub fn PathLogger(comptime State: type) type {
     return struct {
         const Self = @This();
 
-        writer: std.io.AnyWriter,
+        writer: std.Io.Writer,
 
         pub fn init(writer: anytype) Self {
             return .{ .writer = writer };

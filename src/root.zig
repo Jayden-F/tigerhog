@@ -14,10 +14,11 @@ pub const state = @import("state/mod.zig");
 test "run astar" {
     const Node = node.Node(state.State);
     const Domain = domain.BitGrid();
-    const NodeMap = node_pool.GridPool(state.State, Node);
+    const Mapper = node_pool.GridMapper(state.State, Node);
+    const NodePool = node_pool.NodePool(Mapper, Node, state.State, std.heap.memory_pool.Managed(Node));
     const Open = open.PriorityQueue(*Node, Node.lessThanFn);
     const Heuristic = heuristic.Manhattan(state.State);
-    const Expander = expander.GridExpander4Connected(Domain, Node, NodeMap);
+    const Expander = expander.GridExpander4Connected(Domain, Node, NodePool);
     const Logger = logger.NoopLogger(Node);
     const Search = search.UnidirectionalSearch(state.State, Node, Expander, Open, Heuristic, Logger);
 
@@ -32,13 +33,19 @@ test "run astar" {
     }
 
     defer _domain.deinit();
-    var _map = try NodeMap.init(_domain.width, _domain.height, allocator);
-    defer _map.deinit();
+
+    var _mapper = try Mapper.init(_domain.width, _domain.height, allocator);
+    defer _mapper.deinit();
+    var _memory_pool = std.heap.memory_pool.Managed(Node).init(allocator);
+    defer _memory_pool.deinit();
+    var _pool = NodePool.init(_memory_pool, _mapper);
+    defer _pool.deinit();
+
     var _open = try Open.init(allocator, 1);
     defer _open.deinit();
 
     var _heuristic = Heuristic{};
-    var _expander = Expander.init(&_domain, &_map);
+    var _expander = Expander.init(&_domain, &_pool);
     var _logger = Logger.init();
 
     var _search = Search.init(

@@ -137,7 +137,11 @@ pub fn JpsExpander(
         }
 
         pub inline fn generate(self: *Self, state: Node.State_T) !*Node {
-            return try self.node_pool.generate(state);
+            return try self.node_pool.getOrCreate(state);
+        }
+
+        pub inline fn getOrCreate(self: *Self, state: Node.State_T) !*Node {
+            return try self.node_pool.getOrCreate(state);
         }
 
         pub inline fn reset(self: *Self) void {

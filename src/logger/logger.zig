@@ -4,13 +4,13 @@ pub fn Logger(comptime Node: type) type {
     return struct {
         const Self = @This();
 
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
 
         fn log(self: *Self, name: []const u8, node: *const Node) !void {
             try self.writer.print("  - {{ type: \"{s}\", {f} }}\n", .{ name, node });
         }
 
-        pub fn init(writer: *std.io.Writer) Self {
+        pub fn init(writer: *std.Io.Writer) Self {
             return .{ .writer = writer };
         }
 

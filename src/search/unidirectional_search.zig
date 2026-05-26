@@ -18,6 +18,7 @@ pub fn UnidirectionalSearch(
         open: *Open,
         heuristic: *Heuristic,
         logger: *Logger,
+        io: std.Io,
         metrics: metrics.Metrics,
 
         pub fn init(
@@ -25,12 +26,14 @@ pub fn UnidirectionalSearch(
             open: *Open,
             heuristic: *Heuristic,
             logger: *Logger,
+            io: std.Io,
         ) Self {
             return .{
                 .expander = expander,
                 .open = open,
                 .heuristic = heuristic,
                 .logger = logger,
+                .io = io,
                 .metrics = .{},
             };
         }
@@ -38,9 +41,10 @@ pub fn UnidirectionalSearch(
         pub fn deinit(_: *Self) void {}
 
         pub fn query(self: *Self, start_state: State, target_state: ?State) !?*const Node {
-            const timestamp_nanos = std.time.nanoTimestamp();
+            const start = std.Io.Timestamp.now(self.io, .awake);
             const target: ?*const Node = try self.search(start_state, target_state);
-            self.metrics.elapsed_time_nanos = std.time.nanoTimestamp() - timestamp_nanos;
+            const end = std.Io.Timestamp.now(self.io, .awake);
+            self.metrics.elapsed_time_nanos = @as(i128, end.nanoseconds - start.nanoseconds);
 
             if (target) |found| self.metrics.solution_cost = found.get_g();
             self.metrics.nodes_surplus = self.open.len;
@@ -74,8 +78,8 @@ pub fn UnidirectionalSearch(
         }
 
         fn search(self: *Self, start_state: State, target_state: ?State) !?*const Node {
-            const target: ?*Node = if (target_state) |state| try self.expander.generate(state) else null;
-            const start: *Node = try self.expander.generate(start_state);
+            const target: ?*Node = if (target_state) |state| try self.expander.getOrCreate(state) else null;
+            const start: *Node = try self.expander.getOrCreate(start_state);
 
             start.set_g(0.0);
             start.set_f(self.heuristic.compute(start_state, target_state));

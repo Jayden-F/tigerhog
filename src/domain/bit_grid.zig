@@ -22,17 +22,17 @@ pub fn BitGrid() type {
         }
 
         pub fn load_map(reader: *std.Io.Reader, allocator: std.mem.Allocator) !Self {
-            _ = try reader.takeDelimiterExclusive('\n');
-            const height_line = try reader.takeDelimiterExclusive('\n');
+            _ = try reader.takeDelimiter('\n') orelse return error.UnexpectedEndOfStream;
+            const height_line = try reader.takeDelimiter('\n') orelse return error.UnexpectedEndOfStream;
             const height = try std.fmt.parseInt(usize, height_line[7..], 10);
-            const width_line = try reader.takeDelimiterExclusive('\n');
+            const width_line = try reader.takeDelimiter('\n') orelse return error.UnexpectedEndOfStream;
             const width = try std.fmt.parseInt(usize, width_line[6..], 10);
-            _ = try reader.takeDelimiterExclusive('\n');
+            _ = try reader.takeDelimiter('\n') orelse return error.UnexpectedEndOfStream;
 
             var result = try init(allocator, width, height);
 
             for (0..height) |i| {
-                const row_line = try reader.takeDelimiterExclusive('\n');
+                const row_line = try reader.takeDelimiter('\n') orelse return error.UnexpectedEndOfStream;
                 for (0..width) |j| {
                     result.set(@intCast(j), @intCast(i), row_line[j] == '.');
                 }

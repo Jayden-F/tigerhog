@@ -3,7 +3,8 @@ const tigerhog = @import("libtigerhog");
 
 const State = tigerhog.state.State;
 const Node = tigerhog.node.Node(State);
-const NodePool = tigerhog.node_pool.GridPool(State, Node);
+const Mapper = tigerhog.node_pool.GridMapper(State, Node);
+const NodePool = tigerhog.node_pool.NodePool(Mapper, Node, State, std.heap.memory_pool.Managed(Node));
 const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
 const Domain = tigerhog.domain.BitGrid();
 const Expander = tigerhog.expander.JpsExpander(Domain, Node, NodePool);
@@ -19,43 +20,48 @@ const Search = tigerhog.search.UnidirectionalSearch(
     Logger,
 );
 
-pub fn run_astar(allocator: std.mem.Allocator) !void {
-    const cwd = std.fs.cwd();
+pub fn run_astar(io: std.Io, allocator: std.mem.Allocator) !void {
+
+    const cwd = std.Io.Dir.cwd();
 
     var log_buffer: [2048]u8 = undefined;
 
-    // var log_file = try cwd.createFile("log.txt", .{});
-    // var log_writer = log_file.writer(&log_buffer);
+    // var log_file = try std.Io.Dir.createFile(cwd, io, "log.txt", .{});
+    // var log_writer = std.Io.File.writer(log_file, io, &log_buffer);
 
-    var log_writer = std.fs.File.stdout().writer(&log_buffer);
+    var log_writer = std.Io.File.writer(std.Io.File.stdout(), io, &log_buffer);
     const log = &log_writer.interface;
 
-    const maps = try cwd.openDir("src/maps/", .{ .iterate = true });
-    var it = maps.iterate();
+    const maps = try std.Io.Dir.openDir(cwd, io, "src/maps/", .{ .iterate = true });
+    var dir_reader_buffer: [1024]u8 align(@alignOf(usize)) = undefined;
+    var it = std.Io.Dir.Reader.init(maps, &dir_reader_buffer);
 
-    while (try it.next()) |entry| {
+    while (try std.Io.Dir.Reader.next(&it, io)) |entry| {
         if (std.mem.eql(u8, entry.name[(entry.name.len - 5)..], ".scen")) {
             try log.print("{s}\n", .{entry.name});
             // reading problem
-            const scen_file = try maps.openFile(entry.name, .{ .mode = .read_only });
+            const scen_file = try std.Io.Dir.openFile(maps, io, entry.name, .{ .mode = .read_only });
             var reader_buffer: [1024]u8 = undefined;
-            var file_reader = scen_file.reader(&reader_buffer);
+            var file_reader = std.Io.File.reader(scen_file, io, &reader_buffer);
             var scenario = try tigerhog.scenario.load_gppc_scenarios(&file_reader.interface, allocator);
             defer scenario.deinit();
-            scen_file.close();
+            std.Io.File.close(scen_file, io);
 
-            const map_file = try maps.openFile(scenario.map_name, .{ .mode = .read_only });
+            const map_file = try std.Io.Dir.openFile(maps, io, scenario.map_name, .{ .mode = .read_only });
             // initialise search components
             var map_reader_buffer: [5120]u8 = undefined;
-            var map_file_reader = map_file.reader(&map_reader_buffer);
+            var map_file_reader = std.Io.File.reader(map_file, io, &map_reader_buffer);
             var domain = try Domain.load_map(&map_file_reader.interface, allocator);
             defer domain.deinit();
-            map_file.close();
+            std.Io.File.close(map_file, io);
 
-            var node_pool = try NodePool.init(domain.width, domain.height, allocator);
+            var mapper = try Mapper.init(domain.width, domain.height, allocator);
+            errdefer mapper.deinit();
+            var memory_pool = std.heap.memory_pool.Managed(Node).init(allocator);
+            errdefer memory_pool.deinit();
+            var node_pool = NodePool.init(memory_pool, mapper);
             defer node_pool.deinit();
-            // var expander = Expander.init(&domain, &node_pool);
-            // defer expander.deinit();
+
             var open = try Open.init(allocator, domain.width * domain.height);
             defer open.deinit();
             var heuristic = Heuristic.init();
@@ -88,6 +94,7 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     &open,
                     &heuristic,
                     &logger,
+                    io,
                 );
 
                 // searching
@@ -102,8 +109,8 @@ pub fn run_astar(allocator: std.mem.Allocator) !void {
                     },
                 );
 
-                // const metrics = search.get_metrics();
-                // try log.print("{f},\n", .{metrics});
+                const metrics = search.get_metrics();
+                try log.print("{f},\n", .{metrics});
 
                 // if (target) |reached| {
                 //     const path = try search.solution(reached, allocator);
@@ -125,8 +132,11 @@ pub fn main() !void {
     // var dba = std.heap.DebugAllocator(.{ .safety = true, .verbose_log = true }){};
     // const allocator = dba.allocator();
 
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+
     const allocator = std.heap.smp_allocator;
-    try run_astar(allocator);
+    try run_astar(io, allocator);
 
     // std.debug.assert(!dba.detectLeaks());
 }

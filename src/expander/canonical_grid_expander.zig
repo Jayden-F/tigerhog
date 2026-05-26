@@ -68,7 +68,11 @@ pub fn CanonicalGridExpander(
         }
 
         pub inline fn generate(self: *Self, state: Node.State_T) !*Node {
-            return try self.node_pool.generate(state);
+            return try self.node_pool.getOrCreate(state);
+        }
+
+        pub inline fn getOrCreate(self: *Self, state: Node.State_T) !*Node {
+            return try self.node_pool.getOrCreate(state);
         }
 
         inline fn get_neighbours(self: *const Self, x: i32, y: i32) Neighbours {

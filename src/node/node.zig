@@ -57,7 +57,7 @@ pub fn Node(comptime State: type) type {
             return self.priority;
         }
 
-        pub fn format(self: *const Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+        pub fn format(self: *const Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
             return try writer.print(
                 "id: {}, {f}, g: {d}, f: {d}, parent: {?}, priority: {d}",
                 .{

@@ -23,12 +23,11 @@ const Scenario = struct {
 pub fn load_gppc_scenarios(reader: *std.Io.Reader, allocator: std.mem.Allocator) !Scenario {
     var map_name: []const u8 = undefined;
 
-    // remove header
-    _ = try reader.takeDelimiterExclusive('\n');
+    _ = try reader.takeDelimiter('\n');
 
     var instances = std.array_list.Managed(Instance).init(allocator);
 
-    while (reader.takeDelimiterExclusive('\n')) |line| {
+    while (try reader.takeDelimiter('\n')) |line| {
         var tokens = std.mem.tokenizeAny(u8, line, " \t");
 
         _ = tokens.next().?;
@@ -46,11 +45,11 @@ pub fn load_gppc_scenarios(reader: *std.Io.Reader, allocator: std.mem.Allocator)
             .lb = try std.fmt.parseFloat(Cost, tokens.next().?),
         };
         try instances.append(instance);
-    } else |_| {
-        return Scenario{
-            .instances = try instances.toOwnedSlice(),
-            .map_name = try allocator.dupe(u8, map_name),
-            .allocator = allocator,
-        };
     }
+
+    return Scenario{
+        .instances = try instances.toOwnedSlice(),
+        .map_name = try allocator.dupe(u8, map_name),
+        .allocator = allocator,
+    };
 }

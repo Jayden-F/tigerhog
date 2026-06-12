@@ -58,6 +58,10 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
                 .heap_ops = 0,
             };
 
+            for (self.elements, 0..) |*elem, idx| {
+                elem.set_priority(idx);
+            }
+
             const n = self.len >> 1;
             var i = n;
             while (i <= n) : (i -%= 1) {
@@ -165,39 +169,60 @@ pub fn PriorityQueue(comptime T: type, comptime compare_fn: fn (T, T) bool) type
         inline fn sift_up(self: *Self, index: usize) void {
             @setRuntimeSafety(false);
             self.heap_ops += 1;
+
             var current = index;
+            const item = self.elements[current];
+
             while (current > 0) {
                 const parent = (current - 1) >> 1;
-                if (compare_fn(self.elements[current], self.elements[parent])) {
-                    self.swap(current, parent);
-                    current = parent;
-                } else {
-                    break;
-                }
+                const parent_item = self.elements[parent];
+
+                if (!compare_fn(item, parent_item)) break;
+
+                self.elements[current] = parent_item;
+                self.elements[current].set_priority(current);
+                current = parent;
             }
+
+            self.elements[current] = item;
+            self.elements[current].set_priority(current);
         }
 
         inline fn sift_down(self: *Self, index: usize) void {
             @setRuntimeSafety(false);
             self.heap_ops += 1;
+
+            const len = self.len;
+
             var current = index;
-            const first_leaf_index: usize = self.len >> 1;
+            const item = self.elements[current];
+
+            const first_leaf_index = len >> 1;
+
             while (current < first_leaf_index) {
                 const left = (current << 1) + 1;
                 const right = left + 1;
-                var which = left;
 
-                if (right < self.len and compare_fn(self.elements[right], self.elements[left])) {
-                    which = right;
+                var child = left;
+                var child_item = self.elements[left];
+
+                if (right < len) {
+                    const right_item = self.elements[right];
+                    if (compare_fn(right_item, child_item)) {
+                        child = right;
+                        child_item = right_item;
+                    }
                 }
 
-                if (compare_fn(self.elements[which], self.elements[current])) {
-                    self.swap(which, current);
-                    current = which;
-                } else {
-                    break;
-                }
+                if (!compare_fn(child_item, item)) break;
+
+                self.elements[current] = child_item;
+                self.elements[current].set_priority(current);
+                current = child;
             }
+
+            self.elements[current] = item;
+            self.elements[current].set_priority(current);
         }
 
         inline fn swap(self: *Self, a: usize, b: usize) void {
@@ -222,8 +247,6 @@ fn lessThan(a: Node_u64, b: Node_u64) bool {
 }
 
 test "test priority queue" {
-    std.debug.print("\n", .{});
-
     const allocator = std.testing.allocator;
     const Queue = PriorityQueue(*Node_u64, lessThanPtr);
 
@@ -244,13 +267,9 @@ test "test priority queue" {
         // std.debug.print("{}\n", .{node});
         std.debug.assert(!queue.contains(node));
     }
-
-    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
 }
 
 test "test build priority queue" {
-    std.debug.print("\n", .{});
-
     const allocator = std.testing.allocator;
     const Queue = PriorityQueue(Node_u64, lessThan);
 
@@ -264,23 +283,9 @@ test "test build priority queue" {
 
     var queue = try Queue.build(allocator, nodes);
     defer queue.deinit();
-    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
 
     while (queue.len > 0) {
         const node = try queue.pop();
         std.debug.assert(!queue.contains(node));
     }
-
-    std.debug.print("heap ops: {}\n", .{queue.heap_ops});
-}
-
-test "test_fuzz" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
 }

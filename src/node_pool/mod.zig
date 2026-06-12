@@ -9,18 +9,14 @@ pub const HashMapper = hash_mapper.HashMapper;
 pub const GridMapper = grid_mapper.GridMapper;
 pub const BinnedGridMapper = binned_grid_mapper.BinnedGridMapper;
 
-pub fn HashNodePool(comptime State: type, comptime Node: type) type {
-    return NodePool(HashMapper(State, Node), Node, State, std.heap.memory_pool.Managed(Node));
+pub fn HashNodePool(comptime Node: type) type {
+    return NodePool(Node, HashMapper(Node), std.heap.memory_pool.Managed(Node));
 }
 
-pub fn GridNodePool(comptime State: type, comptime Node: type) type {
-    return NodePool(GridMapper(State, Node), Node, State, std.heap.memory_pool.Managed(Node));
+pub fn GridNodePool(comptime Node: type) type {
+    return NodePool(Node, GridMapper(Node), std.heap.memory_pool.Managed(Node));
 }
 
-pub fn BinnedGridNodePool(comptime State: type, comptime Node: type) type {
-    return NodePool(BinnedGridMapper(State, Node), Node, State, std.heap.memory_pool.Managed(Node));
-}
-
-pub fn GridPool(comptime State: type, comptime Node: type) type {
-    return GridNodePool(State, Node);
+pub fn BinnedGridNodePool(comptime Node: type, comptime num_bins: usize) type {
+    return NodePool(Node, BinnedGridMapper(Node, num_bins), std.heap.memory_pool.Managed(Node));
 }

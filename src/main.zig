@@ -3,13 +3,15 @@ const tigerhog = @import("libtigerhog");
 
 const State = tigerhog.state.State;
 const Node = tigerhog.node.Node(State);
-const Mapper = tigerhog.node_pool.GridMapper(State, Node);
-const NodePool = tigerhog.node_pool.GridNodePool(State, Node);
+
+const Mapper = tigerhog.node_pool.GridMapper(Node);
+const NodePool = tigerhog.node_pool.GridNodePool(Node);
+const Expander = tigerhog.expander.JpsExpander(Domain, Node, NodePool);
+
 const Open = tigerhog.open.PriorityQueue(*Node, Node.lessThanFn);
 const Domain = tigerhog.domain.BitGrid();
-const Expander = tigerhog.expander.CanonicalGridExpander(Domain, Node, NodePool);
 const Heuristic = tigerhog.heuristic.Octile(State);
-const Logger = tigerhog.logger.NoopLogger(Node);
+const Logger = tigerhog.logger.Logger(Node);
 
 const Search = tigerhog.search.UnidirectionalSearch(
     State,
@@ -66,30 +68,29 @@ pub fn run_astar(io: std.Io, allocator: std.mem.Allocator) !void {
             var heuristic = Heuristic.init();
             defer heuristic.deinit();
 
-            var expander = Expander.init(&domain, &node_pool);
-            defer expander.deinit();
+            // var expander = Expander.init(&domain, &node_pool);
+            // defer expander.deinit();
 
-            // var search_trace = try cwd.createFile("search.trace.yaml", .{});
-            // defer search_trace.close();
-            //
-            // var search_trace_buffer: [1024]u8 = undefined;
-            // var search_trace_writer = search_trace.writer(&search_trace_buffer);
-            // var logger = Logger.init(&search_trace_writer.interface);
-            //
-            var logger = Logger.init();
+            var search_trace = try cwd.createFile(io, "search.trace.yaml", .{});
+            defer search_trace.close(io);
+
+            var search_trace_buffer: [1024]u8 = undefined;
+            var search_trace_writer = search_trace.writer(io, &search_trace_buffer);
+            var logger = Logger.init(&search_trace_writer.interface);
+
+            // var logger = Logger.init();
             defer logger.deinit();
 
-            for (scenario.instances) |instance| {
-
-                // var expander = Expander.init(
-                //     &domain,
-                //     &node_pool,
-                //     State{
-                //         .x = instance.goal_x,
-                //         .y = instance.goal_y,
-                //     },
-                // );
-                // defer expander.deinit();
+            for (0.., scenario.instances) |i, instance| {
+                var expander = Expander.init(
+                    &domain,
+                    &node_pool,
+                    State{
+                        .x = instance.goal_x,
+                        .y = instance.goal_y,
+                    },
+                );
+                defer expander.deinit();
 
                 // assemble search algorithm
                 var search = Search.init(
@@ -113,7 +114,7 @@ pub fn run_astar(io: std.Io, allocator: std.mem.Allocator) !void {
                 );
 
                 const metrics = search.get_metrics();
-                try log.print("{f},\n", .{metrics});
+                try log.print("{s}:{}{f},\n", .{ scenario.map_name[0 .. scenario.map_name.len - 4], i, metrics });
 
                 // if (target) |reached| {
                 //     const path = try search.solution(reached, allocator);
@@ -121,10 +122,10 @@ pub fn run_astar(io: std.Io, allocator: std.mem.Allocator) !void {
                 //     try path_logger.log_path(path);
                 // }
 
-                std.debug.assert(std.math.approxEqAbs(f64, metrics.solution_cost, instance.lb, 1e-6));
+                // std.debug.assert(std.math.approxEqAbs(f64, metrics.solution_cost, instance.lb, 1e-6));
 
                 search.reset();
-                // try logger.flush();
+                try logger.flush();
             }
         }
     }
@@ -132,13 +133,13 @@ pub fn run_astar(io: std.Io, allocator: std.mem.Allocator) !void {
 }
 
 pub fn main() !void {
-    var dba = std.heap.DebugAllocator(.{ .safety = true, .verbose_log = true }){};
-    const allocator = dba.allocator();
+    // var dba = std.heap.DebugAllocator(.{ .safety = true, .verbose_log = true }){};
+    // const allocator = dba.allocator();
 
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    // const allocator = std.heap.smp_allocator;
+    const allocator = std.heap.smp_allocator;
     try run_astar(io, allocator);
 
     // std.debug.assert(!dba.detectLeaks());

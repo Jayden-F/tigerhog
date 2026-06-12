@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn GridMapper(comptime State: type, comptime Node: type) type {
+pub fn GridMapper(comptime Node: type) type {
     return struct {
         const Self = @This();
         const Slot = struct {
@@ -34,7 +34,7 @@ pub fn GridMapper(comptime State: type, comptime Node: type) type {
             self.generation +%= 1;
         }
 
-        inline fn getIndex(self: *const Self, state: State) usize {
+        inline fn getIndex(self: *const Self, state: Node.State_T) usize {
             const x: usize = switch (@typeInfo(@TypeOf(state.get_x()))) {
                 .float => @intFromFloat(state.get_x()),
                 .int => @intCast(state.get_x()),
@@ -48,7 +48,7 @@ pub fn GridMapper(comptime State: type, comptime Node: type) type {
             return y * self.width + x;
         }
 
-        pub fn get(self: *Self, state: State) !*?*Node {
+        pub inline fn get(self: *Self, state: Node.State_T) !*?*Node {
             const index = self.getIndex(state);
             const slot = &self.slots[index];
             if (slot.generation != self.generation) {

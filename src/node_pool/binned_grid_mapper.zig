@@ -1,11 +1,10 @@
 const std = @import("std");
 const GridMapper = @import("./grid_mapper.zig").GridMapper;
 
-pub fn BinnedGridMapper(comptime State: type, comptime Node: type) type {
+pub fn BinnedGridMapper(comptime Node: type, comptime num_bins: usize) type {
     return struct {
         const Self = @This();
-        const num_bins: usize = 36;
-        const GridMapperType = GridMapper(State, Node);
+        const GridMapperType = GridMapper(Node);
 
         width: usize,
         height: usize,
@@ -39,13 +38,14 @@ pub fn BinnedGridMapper(comptime State: type, comptime Node: type) type {
             }
         }
 
-        inline fn getBin(_: *Self, state: State) usize {
+        inline fn getBin(_: *Self, state: Node.State_T) usize {
             const theta: f64 = state.get_theta();
-            const bin = @floor((theta / comptime std.math.degreesToRadians(10)) + num_bins / 2);
+            const bin_size = comptime (2.0 * std.math.pi) / @as(f64, @floatFromInt(num_bins));
+            const bin = @floor((theta / bin_size) + @as(f64, @floatFromInt(num_bins)) / 2.0);
             return @intFromFloat(bin);
         }
 
-        pub fn get(self: *Self, state: State) !*?*Node {
+        pub fn get(self: *Self, state: Node.State_T) !*?*Node {
             const bin = self.getBin(state);
             return self.mappers[bin].get(state);
         }

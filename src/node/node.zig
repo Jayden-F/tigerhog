@@ -59,7 +59,7 @@ pub fn Node(comptime State: type) type {
 
         pub fn format(self: *const Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
             return try writer.print(
-                "id: {}, {f}, g: {d}, f: {d}, parent: {?}, priority: {d}",
+                "id: {}, {f}, g: {d}, f: {d}, pId: {?}, priority: {d}",
                 .{
                     self.state.to_id(),
                     self.state,
@@ -80,13 +80,10 @@ pub fn Node(comptime State: type) type {
 }
 
 test "show size" {
-    std.debug.print("\n", .{});
-
     const allocator = std.testing.allocator;
     const NodeType = Node(states.State);
 
     const size = @sizeOf(NodeType);
-    std.debug.print("size: {}\n", .{size});
 
     try std.testing.expectEqual(40, size);
 
@@ -94,9 +91,5 @@ test "show size" {
     defer allocator.destroy(node);
     node.* = .{};
 
-    std.debug.print("node: {f}\n", .{node.*});
-
     node.set_g(42.0);
-
-    std.debug.print("node: {f}\n", .{node.*});
 }
